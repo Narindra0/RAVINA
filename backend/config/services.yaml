@@ -20,5 +20,8 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
 
-    # add more service definitions when explicit configuration is needed
-    # please note that last definitions always *replace* previous ones
+    App\State\PlantUserProcessor:
+        decorates: 'api_platform.doctrine.orm.state.persist_processor'
+        arguments: ['@.inner']
+        autowire: true
+        autoconfigure: true
