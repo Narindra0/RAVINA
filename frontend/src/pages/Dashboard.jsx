@@ -13,54 +13,70 @@ import {
   CircularProgress,
   Box,
   Avatar,
+  Divider,
 } from '@mui/material'
-import { WbSunny, Grass, Logout } from '@mui/icons-material'
+import {
+  Grass,
+  CalendarMonth,
+  Logout,
+  WaterDrop,
+  LightMode,
+  AddCircleOutline, // Nouvelle icône pour ajouter une plante
+} from '@mui/icons-material'
+
+// Importez les nouveaux styles
+import { dashboardStyles, DARK_GREEN, ACCENT_ORANGE, PRIMARY_GREEN } from './Dashboard.styles'
 
 export default function Dashboard() {
   const [user, setUser] = useState(null)
   const [plants, setPlants] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [loadingPlants, setLoadingPlants] = useState(true)
+  const [suggestions, setSuggestions] = useState(null)
+  const [loadingData, setLoadingData] = useState(true)
 
-  // Charger le profil utilisateur
   useEffect(() => {
-    const fetchUser = async () => {
+    const fetchData = async () => {
+      let isError = false
+      setLoadingData(true)
+      
+      // ... (Logique de chargement des données - inchangée) ...
+      
+      // --- 1. Charger le profil utilisateur ---
       try {
-        const res = await api.get('/user')
-        setUser(res.data)
+        const userRes = await api.get('/user')
+        setUser(userRes.data)
       } catch (error) {
         console.error('Erreur lors du chargement du profil utilisateur', error)
-      } finally {
-        setLoading(false)
+        isError = true
       }
-    }
-    fetchUser()
-  }, [])
 
-  // Charger les plantes
-  useEffect(() => {
-    const fetchPlants = async () => {
+      // --- 2. Charger les plantes de l'utilisateur ---
       try {
-        const res = await api.get('/plants')
-        
-        // 🚨 CORRECTION CLÉ : L'API retourne 'member', pas 'hydra:member'
-        const data = Array.isArray(res.data)
-          ? res.data
-          : res.data.member || [] // Utilisation de '.member'
-          
-        // Si vous utilisez une ancienne version de React/JS, vous pouvez aussi utiliser res.data['member']
-        // const data = Array.isArray(res.data)
-        //   ? res.data
-        //   : res.data['member'] || []
-
-        setPlants(data)
+        const plantsRes = await api.get('/plants')
+        const plantData = Array.isArray(plantsRes.data)
+          ? plantsRes.data
+          : plantsRes.data['member'] || []
+        setPlants(plantData)
       } catch (error) {
         console.error('Erreur lors du chargement des plantes', error)
+        isError = true
+      }
+
+      // --- 3. Charger les suggestions (basé sur la saison) ---
+      try {
+        const suggestionsRes = await api.get('/suggestions/plants')
+        setSuggestions(suggestionsRes.data)
+      } catch (error) {
+        console.error('Erreur lors du chargement des suggestions', error)
       } finally {
-        setLoadingPlants(false)
+        setLoadingData(false)
+        if (isError) {
+          console.warn(
+            "Certaines données n'ont pas pu être chargées, mais l'utilisateur est authentifié."
+          )
+        }
       }
     }
-    fetchPlants()
+    fetchData()
   }, [])
 
   if (!authStore.isAuthenticated()) {
@@ -68,7 +84,15 @@ export default function Dashboard() {
     return null
   }
 
-  if (loading) {
+  // Fonctions utilitaires
+  const getAvatarFallback = (email) => (email?.[0]?.toUpperCase() || '?')
+  const handleLogout = () => {
+    authStore.clearToken()
+    window.location.href = '/login'
+  }
+
+  // Écran de chargement
+  if (loadingData) {
     return (
       <Box
         sx={{
@@ -76,28 +100,42 @@ export default function Dashboard() {
           justifyContent: 'center',
           alignItems: 'center',
           height: '100vh',
+          // Utilisation du fond défini
+          backgroundColor: dashboardStyles.root.backgroundColor,
         }}
       >
-        <CircularProgress />
+        <CircularProgress color="primary" />
       </Box>
     )
   }
 
+
+  // --- Rendu du Dashboard ---
   return (
-    <Box sx={{ backgroundColor: '#f9fbe7', minHeight: '100vh' }}>
+    // 1. Utilisation du style 'root'
+    <Box sx={dashboardStyles.root}>
+      
       {/* Header */}
-      <AppBar position="static" sx={{ bgcolor: 'primary.main' }}>
+      <AppBar position="static" sx={dashboardStyles.appBar}>
         <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+          <Typography variant="h6" sx={{ ...dashboardStyles.title, fontWeight: 800, letterSpacing: '-0.01em' }}>
             🌱 OrientMada Dashboard
           </Typography>
+          {user && (
+            <Box display="flex" alignItems="center" mr={2}>
+              <Avatar sx={dashboardStyles.avatar}>
+                {getAvatarFallback(user.email)}
+              </Avatar>
+              <Typography variant="body1" sx={{ display: { xs: 'none', sm: 'block' } }}>
+                {user.email}
+              </Typography>
+            </Box>
+          )}
           <Button
             color="inherit"
             startIcon={<Logout />}
-            onClick={() => {
-              authStore.clearToken()
-              window.location.href = '/login'
-            }}
+            onClick={handleLogout}
+            sx={dashboardStyles.logoutButton}
           >
             Déconnexion
           </Button>
@@ -105,97 +143,231 @@ export default function Dashboard() {
       </AppBar>
 
       {/* Contenu principal */}
-      <Container sx={{ py: 5 }}>
+      {/* 2. Utilisation du style 'container' */}
+      <Container sx={dashboardStyles.container}>
         <Box textAlign="center" mb={5}>
-          <Avatar
-            sx={{
-              bgcolor: 'secondary.main',
-              width: 70,
-              height: 70,
-              mx: 'auto',
-              mb: 2,
-              fontSize: 28,
-            }}
-          >
-            {user?.email?.[0]?.toUpperCase()}
-          </Avatar>
-          <Typography variant="h5" gutterBottom>
-            👋 Bienvenue, {user ? user.email : 'Chargement...'}
+          {/* 3. Utilisation du style 'welcomeText' */}
+          <Typography variant="h4" gutterBottom sx={dashboardStyles.welcomeText}>
+            Bienvenue, {user ? user.email.split('@')[0] : 'Jardinier'} !
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Heureux de vous revoir ! Voici un aperçu de vos informations :
+            Gérez vos plantations et découvrez les suggestions saisonnières.
           </Typography>
         </Box>
 
-        {/* Sections */}
-        <Grid container spacing={4}>
-          {/* Section météo */}
-          <Grid item xs={12} md={6}>
-            <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <WbSunny sx={{ fontSize: 50, color: 'orange' }} />
-                <Typography variant="h6" sx={{ mt: 2 }}>
-                  🌤️ Météo
+        {/* SECTION - SUGGESTIONS BASÉES SUR LA SAISON */}
+        <Card sx={{ ...dashboardStyles.mainCard, ...dashboardStyles.suggestionsCard, mb: 4 }}>
+          <CardContent sx={{ p: 3 }}>
+            {/* Header avec date et saison */}
+            <Box display="flex" alignItems="center" mb={3}>
+              <CalendarMonth sx={{ 
+                fontSize: 24, 
+                color: '#6c757d', 
+                mr: 2 
+              }} />
+              <Box>
+                <Typography variant="h6" sx={{ 
+                  fontWeight: 500, 
+                  color: '#495057',
+                  mb: 0.5
+                }}>
+                  Aujourd'hui : {new Date().toLocaleDateString('fr-FR', { 
+                    day: 'numeric', 
+                    month: 'long', 
+                    year: 'numeric' 
+                  })}
                 </Typography>
-                <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
-                  Les informations météo apparaîtront ici.
+                <Typography variant="body2" sx={{ 
+                  color: '#6c757d',
+                  fontWeight: 500
+                }}>
+                  Saison : {suggestions?.currentSeason || 'Chargement...'}
                 </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
+              </Box>
+            </Box>
 
-          {/* Section plantations */}
-          <Grid item xs={12} md={6}>
-            <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
-              <CardContent sx={{ textAlign: 'center' }}>
-                <Grass sx={{ fontSize: 50, color: 'green' }} />
-                <Typography variant="h6" sx={{ mt: 2 }}>
-                  🌿 Vos plantations
-                </Typography>
+            <Divider sx={{ my: 2, borderColor: '#dee2e6' }} />
 
-                {loadingPlants ? (
-                  <CircularProgress sx={{ mt: 2 }} />
-                ) : plants.length === 0 ? (
-                  <Typography sx={{ mt: 2 }}>Aucune plante enregistrée.</Typography>
-                ) : (
-                  <Grid container spacing={2} sx={{ mt: 2 }}>
-                    {plants.map((plant) => (
-                      <Grid item xs={12} key={plant.id}>
-                        <Card
-                          variant="outlined"
-                          sx={{
-                            textAlign: 'left',
-                            backgroundColor: '#f1f8e9',
-                            borderRadius: 2,
-                            p: 1,
-                          }}
-                        >
-                          <Typography variant="subtitle1" fontWeight="bold">
-                            🌱 {plant.name}
-                          </Typography>
-                          <Typography variant="body2">
-                            Type : {plant.type}
-                          </Typography>
-                          <Typography variant="body2">
-                            Lieu : {plant.location}
-                          </Typography>
-                          <Typography variant="body2">
-                            ⏳ Récolte estimée : {plant.expectedHarvestDays} jours
-                          </Typography>
-                          {plant.notes && (
-                            <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
-                              📝 {plant.notes}
-                            </Typography>
-                          )}
-                        </Card>
-                      </Grid>
-                    ))}
+            <Typography variant="h6" sx={{ 
+              mb: 3, 
+              color: '#495057',
+              fontWeight: 500
+            }}>
+              Voici les plantes idéales à cultiver ce mois-ci
+            </Typography>
+
+            {suggestions && suggestions.suggestions && suggestions.suggestions.length > 0 ? (
+              <Grid container spacing={2}>
+                {suggestions.suggestions.map((plant) => (
+                  <Grid item xs={12} sm={6} md={4} key={plant.id}>
+                    <Card sx={{
+                      backgroundColor: 'white',
+                      borderRadius: 2,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                      border: '1px solid #e9ecef',
+                      p: 2,
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column'
+                    }}>
+                      {/* Placeholder pour l'image */}
+                      <Box sx={{
+                        height: 120,
+                        backgroundColor: '#f8f9fa',
+                        borderRadius: 1,
+                        mb: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1px solid #e9ecef'
+                      }}>
+                        <Typography variant="body2" color="text.secondary">
+                          🌱 Image
+                        </Typography>
+                      </Box>
+                      
+                      {/* Nom de la plante */}
+                      <Typography variant="subtitle1" sx={{ 
+                        fontWeight: 600,
+                        color: '#495057',
+                        mb: 1
+                      }}>
+                        {plant.name}
+                      </Typography>
+                      
+                      {/* Détails */}
+                      <Box sx={{ flexGrow: 1 }}>
+                        <Typography variant="body2" sx={{ 
+                          color: '#6c757d',
+                          mb: 0.5,
+                          fontWeight: 500
+                        }}>
+                          {plant.type}
+                        </Typography>
+                        <Typography variant="body2" sx={{ 
+                          color: '#6c757d',
+                          mb: 0.5
+                        }}>
+                          {plant.wateringFrequency || 'Arrosage non spécifié'}
+                        </Typography>
+                        <Typography variant="body2" sx={{ 
+                          color: '#6c757d'
+                        }}>
+                          {plant.sunExposure || 'Exposition non spécifiée'}
+                        </Typography>
+                      </Box>
+                    </Card>
                   </Grid>
-                )}
-              </CardContent>
-            </Card>
-          </Grid>
-        </Grid>
+                ))}
+              </Grid>
+            ) : (
+              <Box sx={{ 
+                textAlign: 'center', 
+                py: 4,
+                color: '#6c757d'
+              }}>
+                <Typography variant="body1">
+                  Aucune suggestion pour la saison actuelle.
+                </Typography>
+              </Box>
+            )}
+
+            {/* Bouton "Voir toutes les plantes" */}
+            <Box sx={{ 
+              textAlign: 'center', 
+              mt: 3,
+              p: 2,
+              backgroundColor: '#f8f9fa',
+              borderRadius: 2,
+              border: '1px solid #e9ecef'
+            }}>
+              <Button 
+                variant="outlined"
+                sx={{
+                  borderColor: '#6c757d',
+                  color: '#495057',
+                  textTransform: 'none',
+                  px: 3,
+                  py: 1,
+                  '&:hover': {
+                    borderColor: '#495057',
+                    backgroundColor: '#f8f9fa'
+                  }
+                }}
+              >
+                Voir toutes les plantes
+              </Button>
+            </Box>
+          </CardContent>
+        </Card>
+
+        {/* SECTION - VOS PLANTATIONS */}
+        {/* 6. Utilisation des styles de carte */}
+        <Card sx={{ ...dashboardStyles.mainCard, ...dashboardStyles.plantsCard }}>
+          <CardContent>
+            <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
+              <Box display="flex" alignItems="center" gap={1}>
+                <Grass sx={{ fontSize: 32, color: PRIMARY_GREEN }} />
+                <Typography variant="h5" color={DARK_GREEN} fontWeight={700}>
+                  Vos plantations
+                </Typography>
+                <Box sx={dashboardStyles.plantBadge}>{plants.length} enregistrées</Box>
+              </Box>
+              <Button variant="outlined" sx={dashboardStyles.smallGhostButton} startIcon={<AddCircleOutline />}>
+                Ajouter
+              </Button>
+            </Box>
+            <Divider sx={{ my: 2 }} />
+
+            {plants.length === 0 ? (
+              <Typography sx={{ mt: 2, color: 'text.secondary' }}>
+                Vous n'avez encore enregistré aucune plante.
+              </Typography>
+            ) : (
+              <Grid container spacing={3} sx={{ mt: 1 }}>
+                {plants.map((plant) => (
+                  <Grid item xs={12} sm={6} md={4} key={plant.id}>
+                    <Card variant="outlined" sx={dashboardStyles.plantItemCard}>
+                      <Box display="flex" alignItems="center" justifyContent="space-between">
+                        <Typography variant="h6" sx={dashboardStyles.plantName}>{plant.name}</Typography>
+                        <Box sx={dashboardStyles.plantBadge}>{plant.type}</Box>
+                      </Box>
+
+                      <Typography variant="body2" color="text.secondary">
+                        Lieu : {plant.location || 'N/A'}
+                      </Typography>
+
+                      <Box sx={dashboardStyles.plantMetricsRow}>
+                        <Typography variant="body2" sx={dashboardStyles.plantMetric}>Saison: {plant.bestSeason || 'N/A'}</Typography>
+                        <Typography variant="body2" sx={dashboardStyles.plantMetric}>Récolte: {plant.expectedHarvestDays} j</Typography>
+                        <Typography variant="body2" sx={dashboardStyles.plantMetric}>Arrosage: {plant.wateringFrequency || 'N/A'}</Typography>
+                        <Typography variant="body2" sx={dashboardStyles.plantMetric}>Soleil: {plant.sunExposure || 'N/A'}</Typography>
+                      </Box>
+
+                      {plant.notes && (
+                        <Typography variant="body2" sx={{ fontStyle: 'italic', mt: 1 }}>
+                          {plant.notes}
+                        </Typography>
+                      )}
+
+                      <Box sx={dashboardStyles.cardActionsRow}></Box>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            )}
+
+            <Box textAlign="center">
+              <Button 
+                variant="contained" 
+                startIcon={<AddCircleOutline />}
+                sx={dashboardStyles.addPlantButton}
+              >
+                Ajouter une nouvelle plante
+              </Button>
+            </Box>
+          </CardContent>
+        </Card>
       </Container>
     </Box>
   )
