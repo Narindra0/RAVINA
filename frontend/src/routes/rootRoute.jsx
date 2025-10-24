@@ -1,37 +1,23 @@
 import React from 'react'
-import { Outlet, Link, createRootRoute, useLocation } from '@tanstack/react-router' // 👈 useLocation a été ajouté ici
-import { authStore } from '../store/auth'
+import { Outlet, createRootRoute } from '@tanstack/react-router' // useLocation n'est plus nécessaire
+
+// Le store d'auth est toujours importé, même si les liens de déconnexion sont partis,
+// si d'autres parties du layout en ont besoin (ce n'est pas le cas ici, mais bonne pratique)
+// import { authStore } from '../store/auth' 
 
 export const rootRoute = createRootRoute({
-  component: () => {
-    const location = useLocation()
-    
-    const isAuthPage = location.pathname === '/login' || location.pathname === '/register'
+  component: () => {
+    // Les variables location et isAuthPage ne sont plus nécessaires
+    // const location = useLocation()
+    // const isAuthPage = location.pathname === '/login' || location.pathname === '/register'
 
-    return (
-      <div style={{ fontFamily: 'sans-serif' }}>
-        
-        {/* 3. Condition : On affiche la navigation SEULEMENT si ce n'est PAS une page d'authentification */}
-        {!isAuthPage && (
-          <nav style={{ marginBottom: '1rem' }}>
-            <Link to="/">Accueil</Link> |{' '}
-            <Link to="/login">Login</Link> |{' '}
-            <Link to="/register">Register</Link> |{' '}
-            <Link to="/dashboard">Dashboard</Link> |{' '}
-            {authStore.isAuthenticated() && (
-              <button
-                onClick={() => {
-                  authStore.clearToken()
-                  window.location.href = '/login'
-                }}
-              >
-                Logout
-              </button>
-            )}
-          </nav>
-        )}
-        <Outlet />
-      </div>
-    )
-  },
+    return (
+      <div style={{ fontFamily: 'sans-serif' }}>
+        
+        {/* ⚠️ La navigation conditionnelle ET la balise <nav> ont été supprimées. */}
+        
+        <Outlet />
+      </div>
+    )
+  },
 })
