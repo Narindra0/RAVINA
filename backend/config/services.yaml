@@ -25,3 +25,11 @@ services:
         arguments: ['@.inner']
         autowire: true
         autoconfigure: true
+
+    App\DataProcessor\PlantDataProcessor:
+        # L'autowiring est souvent activé, mais nous spécifions l'argument qui pose problème
+        arguments:
+            # Injecte la variable d'environnement %kernel.project_dir% dans le 3ème argument
+            $kernelProjectDir: '%kernel.project_dir%'
+        # Vous devez également l'étiqueter (tagger) comme service ApiPlatform Processor
+        tags: ['api_platform.state_processor']

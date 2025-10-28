@@ -1,5 +1,11 @@
 import React from 'react'
-import { Box, Typography, Button, Divider } from '@mui/material'
+import { 
+    Box, 
+    Typography, 
+    Button, 
+    // 🚨 Import de Drawer pour la gestion mobile
+    Drawer 
+} from '@mui/material'
 import { Home, Logout } from '@mui/icons-material'
 import { authStore } from '../store/auth'
 
@@ -7,19 +13,18 @@ import { authStore } from '../store/auth'
 import orientMadaLogo from '../assets/logo-texte.png'
 
 const sidebarStyles = {
-  sidebar: {
+  // 🚀 NOUVEAU: Conteneur de base pour le contenu (partagé par Box et Drawer)
+  sidebarContentBase: {
     width: 280,
     minHeight: '100vh',
     backgroundColor: 'white',
-    borderRight: '1px solid #e5e7eb',
-    display: 'flex',
-    flexDirection: 'column',
-    position: 'sticky',
-    top: 0,
-    height: '100vh',
-    // Responsive: cache sur mobile
-    display: { xs: 'none', md: 'flex' },
+    display: 'flex',         // 👈 Active Flexbox
+    flexDirection: 'column', // 👈 Empile verticalement
+    height: '100vh',         // 👈 Hauteur de la vue (viewport)
   },
+  
+  // 🚨 L'ancien style 'sidebar' est supprimé et sa logique est divisée 
+  // entre sidebarContentBase et les deux éléments JSX (Box et Drawer).
 
   logoContainer: {
     p: 3,
@@ -35,19 +40,9 @@ const sidebarStyles = {
     filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))',
   },
 
-  // Alternative si vous voulez un logo texte stylisé
-  logoText: {
-    fontSize: '2rem',
-    fontWeight: 700,
-    color: '#10b981',
-    fontFamily: 'cursive',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 1,
-  },
-
+  // 🚀 SECTION CLÉ : Ce bloc prend tout l'espace restant et pousse le footer en bas
   nav: {
-    flex: 1,
+    flex: 1, // 👈 🚨 C'EST LA PROPRIÉTÉ QUI FORCE LE BOUTON DE DÉCONNEXION EN BAS
     p: 2,
   },
 
@@ -107,32 +102,28 @@ const sidebarStyles = {
   },
 }
 
-export default function Sidebar({ user }) {
+// 🚨 NOUVELLES PROPS : isMobileOpen et onClose pour le contrôle mobile
+export default function Sidebar({ user, isMobileOpen, onClose }) {
   const handleLogout = () => {
     authStore.clearToken()
     window.location.href = '/login'
   }
 
-  return (
-    <Box sx={sidebarStyles.sidebar}>
-      {/* Logo Section */}
+  // Contenu de la barre latérale - Réutilisable pour la vue Desktop et Mobile
+  const sidebarContent = (
+    // Ce conteneur utilise sidebarContentBase avec display:flex et flexDirection:column
+    <Box sx={sidebarStyles.sidebarContentBase}> 
+      {/* 1. Logo Section */}
       <Box sx={sidebarStyles.logoContainer}>
-        {/* Option 1: Image du logo */}
         <img
           src={orientMadaLogo}
           alt="OrientMada Logo"
           style={sidebarStyles.logoImage}
         />
-        
-        {/* Option 2: Logo texte stylisé (décommentez si vous préférez) */}
-        {/* <Typography sx={sidebarStyles.logoText}>
-          🌱 Plants
-        </Typography> */}
       </Box>
 
-      {/* Navigation Section */}
+      {/* 2. Navigation Section (S'étire au maximum) */}
       <Box sx={sidebarStyles.nav}>
-        {/* User Info (optionnel) */}
         {user && (
           <Box sx={sidebarStyles.userInfo}>
             <Typography variant="body2" sx={sidebarStyles.userEmail}>
@@ -141,20 +132,17 @@ export default function Sidebar({ user }) {
           </Box>
         )}
 
-        {/* Dashboard Button (actif) */}
-        <Button sx={sidebarStyles.navButton}>
+        {/* Dashboard Button */}
+        <Button 
+            sx={sidebarStyles.navButton}
+            onClick={onClose} // Ferme le Drawer si un lien est cliqué sur mobile
+        >
           <Home sx={{ fontSize: 22 }} />
           Dashboard
         </Button>
-
-        {/* Vous pouvez ajouter d'autres boutons ici */}
-        {/* <Button sx={{ ...sidebarStyles.navButton, backgroundColor: 'transparent', color: '#6b7280' }}>
-          <Settings sx={{ fontSize: 22 }} />
-          Paramètres
-        </Button> */}
       </Box>
 
-      {/* Footer - Logout Button */}
+      {/* 3. Footer - Bouton Déconnexion (Poussé tout en bas) */}
       <Box sx={sidebarStyles.footer}>
         <Button 
           onClick={handleLogout}
@@ -165,5 +153,46 @@ export default function Sidebar({ user }) {
         </Button>
       </Box>
     </Box>
+  )
+
+  return (
+    <>
+      {/* 1. Vue Desktop (Box Normale Fixée) */}
+      <Box 
+        sx={{
+            display: { xs: 'none', md: 'flex' }, // Visible uniquement sur MD+
+            
+            // 🚀 Styles pour la fixation complète sur grand écran
+            position: 'sticky', 
+            top: 0,
+            height: '100vh', 
+            
+            // Reprise des styles de dimension et d'apparence
+            width: 280,
+            minHeight: '100vh',
+            backgroundColor: 'white',
+            borderRight: '1px solid #e5e7eb', 
+            flexDirection: 'column',
+        }}
+      >
+        {sidebarContent} 
+      </Box>
+
+      {/* 2. Vue Mobile (Drawer MUI) */}
+      <Drawer
+        variant="temporary" // Comportement de tiroir
+        open={isMobileOpen} // Contrôlé par l'état dans Dashboard.jsx
+        onClose={onClose} // Fonction pour fermer
+        ModalProps={{
+          keepMounted: true, 
+        }}
+        sx={{
+          display: { xs: 'block', md: 'none' }, // Visible uniquement sur XS
+          '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 280 }, 
+        }}
+      >
+        {sidebarContent}
+      </Drawer>
+    </>
   )
 }

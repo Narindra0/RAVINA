@@ -12,9 +12,11 @@ use ApiPlatform\Metadata\ApiProperty;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\HttpFoundation\File\File; 
 use App\Repository\PlantRepository;
-use App\ApiResource\SuggestionsOutput; // <-- Import unique et correct
-use App\State\PlantSuggestionsProvider; // <-- Import unique et correct
+use App\ApiResource\SuggestionsOutput;
+use App\State\PlantSuggestionsProvider;
+use App\Entity\User; 
 
 #[ORM\Entity(repositoryClass: PlantRepository::class)]
 #[ORM\HasLifecycleCallbacks]
@@ -22,28 +24,31 @@ use App\State\PlantSuggestionsProvider; // <-- Import unique et correct
     normalizationContext: ['groups' => ['plant:read']],
     denormalizationContext: ['groups' => ['plant:write']],
     operations: [
-        // Opérations CRUD standards
         new Get(security: "object.getUser() == user"),
         new GetCollection(security: "is_granted('IS_AUTHENTICATED_FULLY')"),
-        new Post(security: "is_granted('IS_AUTHENTICATED_FULLY')"),
+        
+        // ✅ CORRECTION APPORTÉE : Utilisation de inputFormats pour la compatibilité
+        new Post(
+            security: "is_granted('IS_AUTHENTICATED_FULLY')",
+            inputFormats: ['json' => ['application/json'], 'multipart' => ['multipart/form-data']], 
+        ),
+        
         new Put(security: "object.getUser() == user"),
         new Delete(security: "object.getUser() == user"),
         
-        // NOUVELLE OPÉRATION : Suggestions
         new Get(
             uriTemplate: '/plants/suggestions',
             name: 'suggestions',
-            output: SuggestionsOutput::class, // Utilisation de ::class pour le DTO
+            output: SuggestionsOutput::class,
+            normalizationContext: ['groups' => ['suggestions']], 
             read: false,
-            provider: PlantSuggestionsProvider::class, // Utilisation de ::class pour le Provider
+            provider: PlantSuggestionsProvider::class,
             security: "is_granted('IS_AUTHENTICATED_FULLY')",
         ),
     ]
 )]
 class Plant
 {
-    // ... Les propriétés sont inchangées ...
-    
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -86,15 +91,37 @@ class Plant
 
     #[ORM\Column(length: 20, nullable: true)]
     #[Groups(['plant:read', 'plant:write'])]
-    private ?string $bestSeason = null; // Nouveau champ
+    private ?string $bestSeason = null;
 
     #[ORM\Column(length: 50, nullable: true)]
     #[Groups(['plant:read', 'plant:write'])]
-    private ?string $wateringFrequency = null; // Nouveau champ
+    private ?string $wateringFrequency = null;
 
     #[ORM\Column(length: 50, nullable: true)]
     #[Groups(['plant:read', 'plant:write'])]
-    private ?string $sunExposure = null; // Nouveau champ
+    private ?string $sunExposure = null;
+    
+    // PROPRIÉTÉ MAUPÉE: Nom du fichier enregistré en base de données
+    #[ORM\Column(length: 150, nullable: true)]
+    #[Groups(['plant:read', 'plant:write'])] 
+    private ?string $imageSlug = null;
+
+    // PROPRIÉTÉ NON-MAPPÉE: Utilisée pour recevoir le fichier du formulaire (FormData)
+    private ?File $imageFile = null;
+
+    // Contraintes de validation appliquées au fichier (pour la propriété imageFile)
+    #[Assert\File(
+        maxSize: '5M',
+        mimeTypes: [
+            'image/jpeg',   // Pour .jpg et .jpeg
+            'image/png',
+            'image/webp'
+        ],
+        mimeTypesMessage: 'Veuillez uploader une image valide (JPEG, PNG, WebP) de moins de 5 Mo.',
+        groups: ['plant:write']
+    )]
+    private ?File $file = null;
+
 
     #[ORM\Column]
     #[Groups(['plant:read'])]
@@ -117,7 +144,6 @@ class Plant
         $this->updatedAt = new \DateTimeImmutable();
     }
 
-    // Getters / Setters ↓
     public function getId(): ?int { return $this->id; }
 
     public function getUser(): ?User { return $this->user; }
@@ -134,12 +160,11 @@ class Plant
 
     public function getExpectedHarvestDays(): ?int { return $this->expectedHarvestDays; }
     
-    // 🚨 CORRECTION DU BUG DE SYNTAXE (Ligne 136)
-    // Le '$' devant 'this' manquait dans la ligne de code originale.
-    public function setExpectedHarvestDays(int $days): self 
-    { 
-        $this->expectedHarvestDays = $days; // Correction ici
-        return $this; 
+    // ✅ CORRECTION APPORTÉE : Code nettoyé pour éviter l'erreur de syntaxe
+    public function setExpectedHarvestDays(int $days): self
+    {
+        $this->expectedHarvestDays = $days;
+        return $this;
     }
 
     public function getLocation(): ?string { return $this->location; }
@@ -147,8 +172,6 @@ class Plant
 
     public function getNotes(): ?string { return $this->notes; }
     public function setNotes(?string $notes): self { $this->notes = $notes; return $this; }
-
-    // Nouveaux Getters / Setters ↓
 
     public function getBestSeason(): ?string
     {
@@ -183,8 +206,30 @@ class Plant
         return $this;
     }
     
-    // Fin Nouveaux Getters / Setters
+    // GETTER / SETTER POUR imageSlug (nom du fichier en BDD)
+    public function getImageSlug(): ?string
+    {
+        return $this->imageSlug;
+    }
 
+    public function setImageSlug(?string $imageSlug): self
+    {
+        $this->imageSlug = $imageSlug;
+        return $this;
+    }
+
+    // GETTER / SETTER POUR imageFile (le fichier temporaire non-mappé)
+    public function getImageFile(): ?File
+    {
+        return $this->imageFile;
+    }
+
+    public function setImageFile(?File $imageFile = null): self
+    {
+        $this->imageFile = $imageFile;
+        return $this;
+    }
+    
     public function getCreatedAt(): ?\DateTimeImmutable { return $this->createdAt; }
 
     public function getUpdatedAt(): ?\DateTimeImmutable { return $this->updatedAt; }

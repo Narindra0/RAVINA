@@ -12,7 +12,7 @@ import {
   CircularProgress,
   Box,
   Typography,
-  Divider,
+  IconButton, 
 } from '@mui/material'
 import {
   CalendarMonth,
@@ -21,9 +21,21 @@ import {
   WaterDrop,
   WbSunny,
   Schedule,
+  // 🚀 Ajout de l'icône de menu
+  Menu as MenuIcon,
 } from '@mui/icons-material'
 
 import { dashboardStyles } from '../styles/Dashboard.styles'
+import WeatherCard from "./WeatherCard";
+
+
+const getPlantImagePath = (imageSlug) => {
+  if (!imageSlug) {
+    return '/images/plantes/default.jpg' 
+  }
+  return `/images/plantes/${imageSlug}`
+}
+
 
 export default function Dashboard() {
   const [user, setUser] = useState(null)
@@ -31,9 +43,16 @@ export default function Dashboard() {
   const [suggestions, setSuggestions] = useState(null)
   const [loadingData, setLoadingData] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
+  // 🚀 NOUVEAU : État pour la barre latérale mobile
+  const [isSidebarMobileOpen, setIsSidebarMobileOpen] = useState(false) 
 
   const handleAddPlant = (newPlant) => {
     setPlants([...plants, newPlant])
+  }
+  
+  // 🚀 NOUVEAU : Fonction pour basculer l'état de la sidebar
+  const toggleSidebarMobile = () => {
+    setIsSidebarMobileOpen(!isSidebarMobileOpen)
   }
 
   useEffect(() => {
@@ -90,8 +109,33 @@ export default function Dashboard() {
 
   return (
     <Box sx={dashboardStyles.root}>
+      {/* 🚀 BOUTON DE MENU MOBILE : Affiché uniquement sur les petits écrans */}
+      <Box
+        sx={{
+          display: { xs: 'block', md: 'none' }, // Visible uniquement sur mobile
+          position: 'fixed',
+          top: 10,
+          left: 10,
+          zIndex: 1200, 
+        }}
+      >
+        <IconButton 
+          color="primary" 
+          aria-label="open drawer" 
+          onClick={toggleSidebarMobile}
+          sx={{ backgroundColor: 'white', boxShadow: 3 }} // Style pour que le bouton ressorte
+        >
+          <MenuIcon />
+        </IconButton>
+      </Box>
+
       {/* Sidebar */}
-      <Sidebar user={user} />
+      {/* 🚀 MISE À JOUR : Passage des props de contrôle mobile à Sidebar */}
+      <Sidebar 
+        user={user} 
+        isMobileOpen={isSidebarMobileOpen}
+        onClose={toggleSidebarMobile} 
+      />
 
       {/* Main Content */}
       <Box sx={dashboardStyles.mainContent}>
@@ -100,26 +144,18 @@ export default function Dashboard() {
           {/* Header */}
           <Box sx={dashboardStyles.headerSection}>
             <Typography variant="h3" sx={dashboardStyles.welcomeTitle}>
-              Bienvenue sur OrientMada,
+              Bienvenue sur Ravina,
             </Typography>
             <Typography variant="h6" sx={dashboardStyles.welcomeSubtitle}>
-              Bonjour {user ? user.email.split('@')[0] : 'Jayesh'},
+              Bonjour {user ? user.email.split('@')[0] : 'Narindra'},
             </Typography>
           </Box>
 
           {/* Feature Banner */}
-          <Card sx={dashboardStyles.featureBanner}>
-            <Box sx={dashboardStyles.featureBannerOverlay} />
-            <Box sx={dashboardStyles.featureBannerPattern} />
-            <CardContent sx={dashboardStyles.featureBannerContent}>
-              <Typography variant="h3" sx={dashboardStyles.featureBannerTitle}>
-                A venir
-              </Typography>
-              <Typography variant="h6" sx={dashboardStyles.featureBannerText}>
-                Vous pouvez savoir le meteo en temps reel
-              </Typography>
-            </CardContent>
-          </Card>
+          <WeatherCard />
+
+
+
 
           {/* Seasonal Suggestions */}
           <Box sx={dashboardStyles.sectionContainer}>
@@ -142,9 +178,14 @@ export default function Dashboard() {
                 {suggestions.suggestions.map((plant) => (
                   <Grid item xs={12} sm={6} md={4} key={plant.id}>
                     <Card sx={dashboardStyles.suggestionCard}>
-                      <Box sx={dashboardStyles.suggestionCardImage}>
-                        <Typography variant="h3">🌱</Typography>
-                      </Box>
+                      <Box 
+                        sx={{ 
+                          ...dashboardStyles.suggestionCardImage,
+                          backgroundImage: `url(${getPlantImagePath(plant.imageSlug)})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                        }} 
+                      />
                       <CardContent>
                         <Typography variant="h6" sx={dashboardStyles.suggestionCardTitle}>
                           {plant.name}
@@ -193,9 +234,14 @@ export default function Dashboard() {
                 {plants.map((plant) => (
                   <Grid item xs={12} sm={6} md={4} key={plant.id}>
                     <Card sx={dashboardStyles.plantCard}>
-                      <Box sx={dashboardStyles.plantCardImage}>
-                        <Typography variant="h1" sx={{ fontSize: 80 }}>🪴</Typography>
-                      </Box>
+                      <Box 
+                        sx={{ 
+                          ...dashboardStyles.plantCardImage,
+                          backgroundImage: `url(${getPlantImagePath(plant.imageSlug)})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                        }} 
+                      />
                       <CardContent>
                         <Typography variant="h6" sx={dashboardStyles.plantCardTitle}>
                           {plant.name}
