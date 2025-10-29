@@ -3,6 +3,7 @@ namespace App\Controller;
 
 use App\Entity\Plant;
 use App\Repository\PlantRepository;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -11,7 +12,7 @@ use Symfony\Component\Routing\Annotation\Route;
 class PlantSuggestionController extends AbstractController
 {
     #[Route('/api/suggestions/plants', name: 'api_plants_suggestions', methods: ['GET'])]
-    public function suggestions(Request $request, PlantRepository $plantRepository): JsonResponse
+    public function suggestions(Request $request, PlantRepository $plantRepository, CacheItemPoolInterface $cache): JsonResponse
     {
         $month = (int) $request->query->get('month', date('n'));
         
@@ -22,15 +23,28 @@ class PlantSuggestionController extends AbstractController
             in_array($month, [9, 10, 11]) => 'Printemps',
             default => 'Printemps'
         };
-        
-        $plants = $plantRepository->findBy(['bestSeason' => $season]);
-        
-        usort($plants, function($a, $b) {
-            $typeOrder = ['Fruit' => 1, 'Légume' => 2, 'Herbe' => 3];
-            $aOrder = $typeOrder[$a->getType()] ?? 4;
-            $bOrder = $typeOrder[$b->getType()] ?? 4;
-            return $aOrder <=> $bOrder;
-        });
+        // Cache + déduplication par nom pour la saison
+        $cacheKey = 'plant_suggestions_global_' . $season;
+        $cacheItem = $cache->getItem($cacheKey);
+        if (!$cacheItem->isHit()) {
+            $sub = $plantRepository->createQueryBuilder('p2')
+                ->select('MAX(p2.id)')
+                ->andWhere('p2.bestSeason = :season')
+                ->groupBy('p2.name');
+
+            $qb = $plantRepository->createQueryBuilder('p')
+                ->andWhere('p.bestSeason = :season')
+                ->andWhere($qb = $plantRepository->createQueryBuilder('x')->expr()->in('p.id', $sub->getDQL()))
+                ->setParameter('season', $season)
+                ->add('orderBy', "CASE p.type WHEN 'Fruit' THEN 1 WHEN 'Légume' THEN 2 WHEN 'Herbe' THEN 3 ELSE 4 END, p.name ASC");
+
+            $plants = $qb->getQuery()->getResult();
+            $cacheItem->set($plants);
+            $cacheItem->expiresAfter(300);
+            $cache->save($cacheItem);
+        } else {
+            $plants = $cacheItem->get();
+        }
         
         $monthNames = [
             1 => 'Janvier', 2 => 'Février', 3 => 'Mars', 4 => 'Avril',

@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, lazy, Suspense } from 'react'
 import { authStore } from '../store/auth'
 import { api } from '../lib/axios'
-import AddPlantModal from './AddPlantModal'
+const AddPlantModal = lazy(() => import('./AddPlantModal'))
 import Sidebar from './Sidebar'
 import {
   Container,
@@ -26,7 +26,7 @@ import {
 } from '@mui/icons-material'
 
 import { dashboardStyles } from '../styles/Dashboard.styles'
-import WeatherCard from "./WeatherCard";
+const WeatherCard = lazy(() => import('./WeatherCard'))
 
 
 const getPlantImagePath = (imageSlug) => {
@@ -57,39 +57,34 @@ export default function Dashboard() {
 
   useEffect(() => {
     const fetchData = async () => {
-      let isError = false
       setLoadingData(true)
-      
-      try {
-        const userRes = await api.get('/user')
-        setUser(userRes.data)
-      } catch (error) {
-        console.error('Erreur lors du chargement du profil utilisateur', error)
-        isError = true
+      const [userRes, plantsRes, suggestionsRes] = await Promise.allSettled([
+        api.get('/user'),
+        api.get('/plants'),
+        api.get('/suggestions/plants'),
+      ])
+
+      if (userRes.status === 'fulfilled') {
+        setUser(userRes.value.data)
+      } else {
+        console.error('Erreur lors du chargement du profil utilisateur', userRes.reason)
       }
 
-      try {
-        const plantsRes = await api.get('/plants')
-        const plantData = Array.isArray(plantsRes.data)
-          ? plantsRes.data
-          : plantsRes.data['member'] || []
+      if (plantsRes.status === 'fulfilled') {
+        const data = plantsRes.value.data
+        const plantData = Array.isArray(data) ? data : data['member'] || []
         setPlants(plantData)
-      } catch (error) {
-        console.error('Erreur lors du chargement des plantes', error)
-        isError = true
+      } else {
+        console.error('Erreur lors du chargement des plantes', plantsRes.reason)
       }
 
-      try {
-        const suggestionsRes = await api.get('/suggestions/plants')
-        setSuggestions(suggestionsRes.data)
-      } catch (error) {
-        console.error('Erreur lors du chargement des suggestions', error)
-      } finally {
-        setLoadingData(false)
-        if (isError) {
-          console.warn("Certaines données n'ont pas pu être chargées.")
-        }
+      if (suggestionsRes.status === 'fulfilled') {
+        setSuggestions(suggestionsRes.value.data)
+      } else {
+        console.error('Erreur lors du chargement des suggestions', suggestionsRes.reason)
       }
+
+      setLoadingData(false)
     }
     fetchData()
   }, [])
@@ -152,7 +147,10 @@ export default function Dashboard() {
           </Box>
 
           {/* Feature Banner */}
-          <WeatherCard />
+          <Suspense fallback={null}>
+            <WeatherCard />
+          </Suspense>
+
 
 
 
@@ -178,14 +176,16 @@ export default function Dashboard() {
                 {suggestions.suggestions.map((plant) => (
                   <Grid item xs={12} sm={6} md={4} key={plant.id}>
                     <Card sx={dashboardStyles.suggestionCard}>
-                      <Box 
-                        sx={{ 
-                          ...dashboardStyles.suggestionCardImage,
-                          backgroundImage: `url(${getPlantImagePath(plant.imageSlug)})`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center',
-                        }} 
-                      />
+                      <Box sx={dashboardStyles.suggestionCardImage}>
+                        <img 
+                          src={getPlantImagePath(plant.imageSlug)} 
+                          alt={plant.name}
+                          loading="lazy"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          width={600}
+                          height={360}
+                        />
+                      </Box>
                       <CardContent>
                         <Typography variant="h6" sx={dashboardStyles.suggestionCardTitle}>
                           {plant.name}
@@ -234,14 +234,16 @@ export default function Dashboard() {
                 {plants.map((plant) => (
                   <Grid item xs={12} sm={6} md={4} key={plant.id}>
                     <Card sx={dashboardStyles.plantCard}>
-                      <Box 
-                        sx={{ 
-                          ...dashboardStyles.plantCardImage,
-                          backgroundImage: `url(${getPlantImagePath(plant.imageSlug)})`,
-                          backgroundSize: 'cover',
-                          backgroundPosition: 'center',
-                        }} 
-                      />
+                      <Box sx={dashboardStyles.plantCardImage}>
+                        <img 
+                          src={getPlantImagePath(plant.imageSlug)} 
+                          alt={plant.name}
+                          loading="lazy"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                          width={600}
+                          height={400}
+                        />
+                      </Box>
                       <CardContent>
                         <Typography variant="h6" sx={dashboardStyles.plantCardTitle}>
                           {plant.name}
@@ -287,11 +289,13 @@ export default function Dashboard() {
       </Box>
 
       {/* Modal */}
-      <AddPlantModal 
-        open={showAddModal}
-        onClose={() => setShowAddModal(false)}
-        onPlantAdded={handleAddPlant}
-      />
+      <Suspense fallback={null}>
+        <AddPlantModal 
+          open={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onPlantAdded={handleAddPlant}
+        />
+      </Suspense>
     </Box>
   )
 }

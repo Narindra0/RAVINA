@@ -14,7 +14,6 @@ export default function Plants() {
         const res = await api.get('/plants')
         console.log('Réponse API:', res.data)
 
-        // ✅ API Platform renvoie souvent { "hydra:member": [...] }
         if (Array.isArray(res.data)) {
           setPlants(res.data)
         } else if (res.data['hydra:member']) {

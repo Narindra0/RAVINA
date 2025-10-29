@@ -3,29 +3,27 @@ import {
     Box, 
     Typography, 
     Button, 
-    // 🚨 Import de Drawer pour la gestion mobile
     Drawer 
 } from '@mui/material'
-import { Home, Logout } from '@mui/icons-material'
+import { Home, Logout, Cloud } from '@mui/icons-material'
+// 🚨 CORRECTION: Utilisation des hooks et composants de TanStack Router
+import { Link, useRouterState } from '@tanstack/react-router' 
+
 import { authStore } from '../store/auth'
 
 // Import de votre logo
 import orientMadaLogo from '../assets/logo-texte.png'
 
 const sidebarStyles = {
-  // 🚀 NOUVEAU: Conteneur de base pour le contenu (partagé par Box et Drawer)
   sidebarContentBase: {
     width: 280,
     minHeight: '100vh',
     backgroundColor: 'white',
-    display: 'flex',         // 👈 Active Flexbox
-    flexDirection: 'column', // 👈 Empile verticalement
-    height: '100vh',         // 👈 Hauteur de la vue (viewport)
+    display: 'flex',         
+    flexDirection: 'column', 
+    height: '100vh',         
   },
   
-  // 🚨 L'ancien style 'sidebar' est supprimé et sa logique est divisée 
-  // entre sidebarContentBase et les deux éléments JSX (Box et Drawer).
-
   logoContainer: {
     p: 3,
     borderBottom: '1px solid #e5e7eb',
@@ -40,29 +38,36 @@ const sidebarStyles = {
     filter: 'drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))',
   },
 
-  // 🚀 SECTION CLÉ : Ce bloc prend tout l'espace restant et pousse le footer en bas
   nav: {
-    flex: 1, // 👈 🚨 C'EST LA PROPRIÉTÉ QUI FORCE LE BOUTON DE DÉCONNEXION EN BAS
+    flex: 1, 
     p: 2,
   },
 
-  navButton: {
+  // 💡 Nouveau style de base pour le Link de TanStack
+  tanstackLinkBase: {
+    textDecoration: 'none', 
+    color: 'inherit',
+    display: 'block', 
+  },
+
+  navButton: (isActive) => ({
     width: '100%',
     justifyContent: 'flex-start',
     px: 3,
     py: 1.5,
     mb: 1,
     borderRadius: 2,
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-    color: '#10b981',
-    fontWeight: 600,
+    backgroundColor: isActive ? 'rgba(16, 185, 129, 0.15)' : 'transparent',
+    color: isActive ? '#059669' : '#4b5563', 
+    fontWeight: isActive ? 700 : 600,
     textTransform: 'none',
     fontSize: '1rem',
     gap: 2,
     '&:hover': {
       backgroundColor: 'rgba(16, 185, 129, 0.15)',
+      color: '#059669',
     },
-  },
+  }),
 
   footer: {
     p: 2,
@@ -102,16 +107,19 @@ const sidebarStyles = {
   },
 }
 
-// 🚨 NOUVELLES PROPS : isMobileOpen et onClose pour le contrôle mobile
 export default function Sidebar({ user, isMobileOpen, onClose }) {
+  // 🚨 CORRECTION: Utilisation de useRouterState pour obtenir le chemin actuel
+  const routerState = useRouterState();
+  const currentPath = routerState.location.pathname; 
+
   const handleLogout = () => {
     authStore.clearToken()
     window.location.href = '/login'
   }
+  
+  const isPathActive = (path) => currentPath === path || (path === '/' && currentPath === '/');
 
-  // Contenu de la barre latérale - Réutilisable pour la vue Desktop et Mobile
   const sidebarContent = (
-    // Ce conteneur utilise sidebarContentBase avec display:flex et flexDirection:column
     <Box sx={sidebarStyles.sidebarContentBase}> 
       {/* 1. Logo Section */}
       <Box sx={sidebarStyles.logoContainer}>
@@ -122,7 +130,7 @@ export default function Sidebar({ user, isMobileOpen, onClose }) {
         />
       </Box>
 
-      {/* 2. Navigation Section (S'étire au maximum) */}
+      {/* 2. Navigation Section */}
       <Box sx={sidebarStyles.nav}>
         {user && (
           <Box sx={sidebarStyles.userInfo}>
@@ -133,16 +141,30 @@ export default function Sidebar({ user, isMobileOpen, onClose }) {
         )}
 
         {/* Dashboard Button */}
-        <Button 
-            sx={sidebarStyles.navButton}
-            onClick={onClose} // Ferme le Drawer si un lien est cliqué sur mobile
-        >
-          <Home sx={{ fontSize: 22 }} />
-          Dashboard
-        </Button>
+        {/* 🚨 Utilisation du composant Link de TanStack */}
+        <Link to="/" style={sidebarStyles.tanstackLinkBase} onClick={onClose}>
+            <Button 
+                sx={sidebarStyles.navButton(isPathActive('/'))}
+            >
+              <Home sx={{ fontSize: 22 }} />
+              Dashboard
+            </Button>
+        </Link>
+        
+        {/* Bouton Météo */}
+        {/* 🚨 Utilisation du composant Link de TanStack */}
+        <Link to="/meteo" style={sidebarStyles.tanstackLinkBase} onClick={onClose}>
+            <Button 
+                sx={sidebarStyles.navButton(isPathActive('/meteo'))}
+            >
+              <Cloud sx={{ fontSize: 22 }} />
+              Météo Détaillée
+            </Button>
+        </Link>
+
       </Box>
 
-      {/* 3. Footer - Bouton Déconnexion (Poussé tout en bas) */}
+      {/* 3. Footer - Bouton Déconnexion */}
       <Box sx={sidebarStyles.footer}>
         <Button 
           onClick={handleLogout}
@@ -160,14 +182,10 @@ export default function Sidebar({ user, isMobileOpen, onClose }) {
       {/* 1. Vue Desktop (Box Normale Fixée) */}
       <Box 
         sx={{
-            display: { xs: 'none', md: 'flex' }, // Visible uniquement sur MD+
-            
-            // 🚀 Styles pour la fixation complète sur grand écran
+            display: { xs: 'none', md: 'flex' },
             position: 'sticky', 
             top: 0,
             height: '100vh', 
-            
-            // Reprise des styles de dimension et d'apparence
             width: 280,
             minHeight: '100vh',
             backgroundColor: 'white',
@@ -180,14 +198,14 @@ export default function Sidebar({ user, isMobileOpen, onClose }) {
 
       {/* 2. Vue Mobile (Drawer MUI) */}
       <Drawer
-        variant="temporary" // Comportement de tiroir
-        open={isMobileOpen} // Contrôlé par l'état dans Dashboard.jsx
-        onClose={onClose} // Fonction pour fermer
+        variant="temporary"
+        open={isMobileOpen}
+        onClose={onClose}
         ModalProps={{
           keepMounted: true, 
         }}
         sx={{
-          display: { xs: 'block', md: 'none' }, // Visible uniquement sur XS
+          display: { xs: 'block', md: 'none' },
           '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 280 }, 
         }}
       >

@@ -43,17 +43,50 @@ final class PlantDataProcessor implements ProcessorInterface
             // 1. Nettoyer le nom de la plante (ex: "Tomate Cerise" -> "tomate-cerise")
             $safeFilename = $this->slugger->slug($data->getName())->lower();
             
-            // 2. Créer le nom de fichier final (ex: tomate-cerise.jpg)
-            $newFilename = sprintf('%s.%s', $safeFilename, $file->guessExtension() ?? 'jpg');
+            // S'assurer que le dossier d'upload existe
+            if (!is_dir($this->uploadPath)) {
+                @mkdir($this->uploadPath, 0775, true);
+            }
 
-            // 3. Déplacer le fichier vers le dossier du frontend
-            $file->move(
-                $this->uploadPath,
-                $newFilename
-            );
-            
-            // 4. ENREGISTRER le nom dans la colonne imageSlug (chemin relatif public)
-            $data->setImageSlug($newFilename);
+            // 2. Déplacer le fichier uploadé sous un nom temporaire (conserve extension originale)
+            $originalExtension = $file->guessExtension() ?: 'jpg';
+            $tempFilename = sprintf('%s_tmp.%s', $safeFilename, $originalExtension);
+            $file->move($this->uploadPath, $tempFilename);
+
+            $tempPath = $this->uploadPath . DIRECTORY_SEPARATOR . $tempFilename;
+            $targetFilename = sprintf('%s.webp', $safeFilename);
+            $targetPath = $this->uploadPath . DIRECTORY_SEPARATOR . $targetFilename;
+
+            // 3. Conversion en WebP (qualité 80)
+            $mimeType = mime_content_type($tempPath) ?: 'image/jpeg';
+            $image = null;
+            if (str_contains($mimeType, 'jpeg') || str_contains($mimeType, 'jpg')) {
+                $image = @imagecreatefromjpeg($tempPath);
+            } elseif (str_contains($mimeType, 'png')) {
+                $image = @imagecreatefrompng($tempPath);
+                if ($image) {
+                    imagepalettetotruecolor($image);
+                    imagealphablending($image, true);
+                    imagesavealpha($image, true);
+                }
+            } elseif (str_contains($mimeType, 'webp')) {
+                $image = @imagecreatefromwebp($tempPath);
+            }
+
+            if ($image) {
+                // Écrire le WebP
+                imagewebp($image, $targetPath, 80);
+                imagedestroy($image);
+                // Supprimer le fichier temporaire original
+                @unlink($tempPath);
+                // 4. Enregistrer le slug avec extension .webp
+                $data->setImageSlug($targetFilename);
+            } else {
+                // Fallback: conserver l'original si conversion échoue
+                $fallbackFilename = sprintf('%s.%s', $safeFilename, $originalExtension);
+                @rename($tempPath, $this->uploadPath . DIRECTORY_SEPARATOR . $fallbackFilename);
+                $data->setImageSlug($fallbackFilename);
+            }
             
             // 5. Nettoyer la propriété ImageFile
             $data->setImageFile(null); 
