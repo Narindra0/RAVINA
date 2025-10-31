@@ -107,20 +107,17 @@ class Plant
     private ?string $imageSlug = null;
 
     // PROPRIÉTÉ NON-MAPPÉE: Utilisée pour recevoir le fichier du formulaire (FormData)
-    private ?File $imageFile = null;
-
-    // Contraintes de validation appliquées au fichier (pour la propriété imageFile)
     #[Assert\File(
         maxSize: '5M',
         mimeTypes: [
-            'image/jpeg',   // Pour .jpg et .jpeg
+            'image/jpeg',
             'image/png',
             'image/webp'
         ],
         mimeTypesMessage: 'Veuillez uploader une image valide (JPEG, PNG, WebP) de moins de 5 Mo.',
         groups: ['plant:write']
     )]
-    private ?File $file = null;
+    private ?File $imageFile = null;
 
 
     #[ORM\Column]

@@ -38,6 +38,7 @@ const sunExposures = ['Plein soleil', 'Mi-ombre', 'Ombre'];
 const bestSeasons = ['Printemps', 'Été', 'Automne', 'Hiver', 'Toute l\'année'];
 
 export default function AddPlantModal({ open, onClose, onPlantAdded }) {
+    const todayIso = new Date().toISOString().slice(0, 10);
     const [formData, setFormData] = useState({
         name: '',
         type: '',
@@ -46,6 +47,7 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
         sunExposure: '',
         bestSeason: '',
         expectedHarvestDays: '',
+        plantedAt: todayIso,
         notes: '',
     });
     
@@ -68,16 +70,47 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
-    // 🚀 Gestion de l'upload d'image
-    const handleImageChange = (e) => {
+    // 🚀 Gestion de l'upload d'image (clic + drag&drop) avec compression simple
+    const compressImageIfNeeded = async (file) => {
+        try {
+            if (!file.type.startsWith('image/')) return file;
+            const bitmap = await createImageBitmap(file);
+            const canvas = document.createElement('canvas');
+            canvas.width = bitmap.width;
+            canvas.height = bitmap.height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(bitmap, 0, 0);
+            const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', 0.8));
+            return blob ? new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' }) : file;
+        } catch {
+            return file;
+        }
+    };
+
+    const applySelectedFile = async (file) => {
+        const maybeCompressed = await compressImageIfNeeded(file);
+        setImageFile(maybeCompressed);
+        if (imagePreview) URL.revokeObjectURL(imagePreview);
+        setImagePreview(URL.createObjectURL(maybeCompressed));
+    };
+
+    const handleImageChange = async (e) => {
         const file = e.target.files[0];
         if (file) {
-            setImageFile(file);
-            if (imagePreview) URL.revokeObjectURL(imagePreview); // Nettoie l'ancien si on en choisit un nouveau
-            setImagePreview(URL.createObjectURL(file));
+            await applySelectedFile(file);
         } else {
             handleRemoveImage();
         }
+    };
+
+    const handleDrop = async (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files?.[0];
+        if (file) await applySelectedFile(file);
+    };
+
+    const handleDragOver = (e) => {
+        e.preventDefault();
     };
 
     // 🚀 Fonction pour supprimer l'image
@@ -90,9 +123,8 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
     }
 
     const validateForm = () => {
-        // ... (validation inchangée)
-        if (!formData.name.trim() || !formData.type || !formData.location.trim()) {
-            setError('Veuillez remplir au moins le Nom, le Type et le Lieu.');
+        if (!formData.name.trim() || !formData.type || !formData.location.trim() || !formData.plantedAt) {
+            setError('Veuillez remplir les champs requis : Nom, Type, Lieu, Date.');
             return false;
         }
         if (imageFile && !imageFile.type.startsWith('image/')) {
@@ -114,6 +146,7 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
             sunExposure: '',
             bestSeason: '',
             expectedHarvestDays: '',
+            plantedAt: todayIso,
             notes: '',
         });
         handleRemoveImage(); // Utilise la fonction de suppression
@@ -136,9 +169,14 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
         const form = new FormData();
 
         Object.keys(formData).forEach(key => {
-            const value = key === 'expectedHarvestDays' 
-                ? (parseInt(formData[key]) || 0).toString() 
-                : formData[key];
+            let value = formData[key];
+            if (key === 'expectedHarvestDays') {
+                value = (parseInt(formData[key]) || 0).toString();
+            }
+            if (key === 'plantedAt' && value) {
+                // Normaliser au format YYYY-MM-DD
+                value = String(value);
+            }
             form.append(key, value);
         });
 
@@ -147,10 +185,8 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
         }
         
         try {
-            await api.post('/plants', form); 
-            // Note: L'appel à onPlantAdded devrait idéalement se faire avec la donnée de réponse (response.data)
-            // Assurez-vous que l'API renvoie la nouvelle plante.
-            onPlantAdded(formData); 
+            const res = await api.post('/plants', form); 
+            onPlantAdded(res.data); 
             setSuccessMessage('Plante ajoutée avec succès !');
 
             setTimeout(handleCloseModal, 1000); 
@@ -232,6 +268,20 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
                                         {bestSeasons.map((season) => (<MenuItem key={season} value={season}>{season}</MenuItem>))}
                                     </Select>
                                 </FormControl>
+                            </Box>
+                        </Grid>
+
+                        {/* Ligne 2b: Date de plantation */}
+                        <Grid item xs={12} sm={6}>
+                            <Box sx={addPlantStyles.formControl}> 
+                                <TextField
+                                    required fullWidth label="Date de plantation" name="plantedAt" type="date"
+                                    value={formData.plantedAt}
+                                    onChange={handleChange}
+                                    variant="outlined" size="small"
+                                    InputLabelProps={{ shrink: true }}
+                                    InputProps={{ startAdornment: <CalendarMonth sx={{ color: '#6c757d', mr: 1 }} /> }}
+                                />
                             </Box>
                         </Grid>
 
@@ -327,6 +377,11 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
                                     )}
                                 </Grid>
 
+                                {/* Zone de drop */}
+                                <Box onDrop={handleDrop} onDragOver={handleDragOver} sx={{ mt: 1, p: 2, border: '1px dashed #cbd5e1', borderRadius: 1, color: '#64748b', textAlign: 'center' }}>
+                                    Glissez-déposez une image ici
+                                </Box>
+
                                 {imagePreview && (
                                     <Box sx={{ mt: 2, textAlign: 'center' }}>
                                         <img 
@@ -355,7 +410,7 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
                         fullWidth
                         variant="contained"
                         sx={addPlantStyles.submitButton}
-                        disabled={isSubmitting || successMessage}
+                        disabled={isSubmitting || successMessage || !formData.name.trim() || !formData.type || !formData.location.trim() || !formData.plantedAt}
                         startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <AddCircleOutline />}
                     >
                         {isSubmitting ? 'Ajout en cours...' : 'Enregistrer ma nouvelle plante'}

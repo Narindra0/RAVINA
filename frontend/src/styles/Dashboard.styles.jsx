@@ -183,7 +183,9 @@ export const dashboardStyles = {
   },
 
   suggestionCardImage: {
-    height: 140,
+    width: '100%',
+    aspectRatio: '5 / 4',
+    overflow: 'hidden',
     backgroundColor: '#f3f4f6',
     display: 'flex',
     alignItems: 'center',
@@ -227,7 +229,9 @@ export const dashboardStyles = {
   },
 
   plantCardImage: {
-    height: 200,
+    width: '100%',
+    aspectRatio: '5 / 4',
+    overflow: 'hidden',
     backgroundColor: '#f9fafb',
     display: 'flex',
     alignItems: 'center',

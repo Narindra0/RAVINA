@@ -54,7 +54,8 @@ final class PlantDataProcessor implements ProcessorInterface
             $file->move($this->uploadPath, $tempFilename);
 
             $tempPath = $this->uploadPath . DIRECTORY_SEPARATOR . $tempFilename;
-            $targetFilename = sprintf('%s.webp', $safeFilename);
+            $rand = substr(bin2hex(random_bytes(3)), 0, 6);
+            $targetFilename = sprintf('%s-%s.webp', $safeFilename, $rand);
             $targetPath = $this->uploadPath . DIRECTORY_SEPARATOR . $targetFilename;
 
             // 3. Conversion en WebP (qualité 80)
@@ -90,6 +91,11 @@ final class PlantDataProcessor implements ProcessorInterface
             
             // 5. Nettoyer la propriété ImageFile
             $data->setImageFile(null); 
+        }
+
+        // Définir une date de plantation par défaut si absente
+        if ($data->getPlantedAt() === null) {
+            $data->setPlantedAt(new \DateTimeImmutable('today'));
         }
 
         // 6. Persister et enregistrer en base de données

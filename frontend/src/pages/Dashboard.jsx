@@ -40,6 +40,8 @@ const getPlantImagePath = (imageSlug) => {
 export default function Dashboard() {
   const [user, setUser] = useState(null)
   const [plants, setPlants] = useState([])
+  const [showAllPlants, setShowAllPlants] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [suggestions, setSuggestions] = useState(null)
   const [loadingData, setLoadingData] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
@@ -60,7 +62,7 @@ export default function Dashboard() {
       setLoadingData(true)
       const [userRes, plantsRes, suggestionsRes] = await Promise.allSettled([
         api.get('/user'),
-        api.get('/plants'),
+        api.get('/plants', { params: { itemsPerPage: 5, page: 1 } }),
         api.get('/suggestions/plants'),
       ])
 
@@ -88,6 +90,22 @@ export default function Dashboard() {
     }
     fetchData()
   }, [])
+
+  const handleViewAll = async () => {
+    if (showAllPlants) return
+    setLoadingMore(true)
+    try {
+      const res = await api.get('/plants')
+      const data = res.data
+      const plantData = Array.isArray(data) ? data : data['member'] || []
+      setPlants(plantData)
+      setShowAllPlants(true)
+    } catch (err) {
+      console.error('Erreur lors du chargement de toutes les plantes', err)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   if (!authStore.isAuthenticated()) {
     window.location.href = '/login'
@@ -172,18 +190,16 @@ export default function Dashboard() {
             </Box>
 
             {suggestions && suggestions.suggestions && suggestions.suggestions.length > 0 ? (
-              <Grid container spacing={3}>
+              <Grid container spacing={1.5}>
                 {suggestions.suggestions.map((plant) => (
-                  <Grid item xs={12} sm={6} md={4} key={plant.id}>
+                  <Grid item xs={12} sm={6} md={3} key={plant.id}>
                     <Card sx={dashboardStyles.suggestionCard}>
                       <Box sx={dashboardStyles.suggestionCardImage}>
                         <img 
                           src={getPlantImagePath(plant.imageSlug)} 
                           alt={plant.name}
                           loading="lazy"
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                          width={600}
-                          height={360}
+                          style={{ width: '220px', height: '100%', objectFit: 'cover', display: 'block' }}
                         />
                       </Box>
                       <CardContent>
@@ -217,12 +233,16 @@ export default function Dashboard() {
               <Typography variant="h5" sx={dashboardStyles.sectionTitle}>
                 Mes plantations
               </Typography>
-              <Button 
-                endIcon={<ArrowForward />}
-                sx={dashboardStyles.viewAllButton}
-              >
-                Voir toutes
-              </Button>
+              {!showAllPlants && plants.length >= 5 && (
+                <Button 
+                  endIcon={<ArrowForward />}
+                  sx={dashboardStyles.viewAllButton}
+                  onClick={handleViewAll}
+                  disabled={loadingMore}
+                >
+                  {loadingMore ? 'Chargement…' : 'Voir toutes'}
+                </Button>
+              )}
             </Box>
 
             {plants.length === 0 ? (
@@ -230,18 +250,16 @@ export default function Dashboard() {
                 <Typography>Vous n'avez encore enregistré aucune plante.</Typography>
               </Box>
             ) : (
-              <Grid container spacing={4}>
-                {plants.map((plant) => (
-                  <Grid item xs={12} sm={6} md={4} key={plant.id}>
+              <Grid container spacing={1.5}>
+                {(showAllPlants ? plants : plants.slice(0, 5)).map((plant) => (
+                  <Grid item xs={12} sm={6} md={3} key={plant.id}>
                     <Card sx={dashboardStyles.plantCard}>
                       <Box sx={dashboardStyles.plantCardImage}>
                         <img 
                           src={getPlantImagePath(plant.imageSlug)} 
                           alt={plant.name}
                           loading="lazy"
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
-                          width={600}
-                          height={400}
+                          style={{ width: '220px', height: '100%', objectFit: 'cover', display: 'block' }}
                         />
                       </Box>
                       <CardContent>
