@@ -128,12 +128,14 @@ php bin/console doctrine:migrations:migrate
 ### Frontend (React + Vite)
 
 1. Dépendances :
-````
+```
 
 cd frontend
 npm install
 
 ```
+
+
 
 2. Démarrer en mode développement :
 ```
@@ -271,5 +273,5 @@ cd frontend && npm run dev
 
 ## Licence
 
-Propriétaire. Tous droits réservés.
+Narindra Ranjalahy. Tous droits réservés.
 ```
