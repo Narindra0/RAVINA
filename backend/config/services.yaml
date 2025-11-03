@@ -33,3 +33,6 @@ services:
             $kernelProjectDir: '%kernel.project_dir%'
         # Vous devez également l'étiqueter (tagger) comme service ApiPlatform Processor
         tags: ['api_platform.state_processor']
+
+    App\Security\PlantOwnerExtension:
+        tags: ['api_platform.doctrine.orm.query_extension.collection']

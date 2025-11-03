@@ -15,6 +15,7 @@ class PlantSuggestionController extends AbstractController
     public function suggestions(Request $request, PlantRepository $plantRepository, CacheItemPoolInterface $cache): JsonResponse
     {
         $month = (int) $request->query->get('month', date('n'));
+        $ownerId = (int)($_ENV['SUGGESTION_OWNER_ID'] ?? 1);
         
         $season = match (true) {
             in_array($month, [12, 1, 2]) => 'Été',
@@ -24,19 +25,23 @@ class PlantSuggestionController extends AbstractController
             default => 'Printemps'
         };
         // Cache + déduplication par nom pour la saison
-        $cacheKey = 'plant_suggestions_global_' . $season;
+        $cacheKey = 'plant_suggestions_user_' . $ownerId . '_' . $season;
         $cacheItem = $cache->getItem($cacheKey);
         if (!$cacheItem->isHit()) {
             $sub = $plantRepository->createQueryBuilder('p2')
                 ->select('MAX(p2.id)')
                 ->andWhere('p2.bestSeason = :season')
+                ->andWhere('p2.user = :owner')
                 ->groupBy('p2.name');
 
-            $qb = $plantRepository->createQueryBuilder('p')
-                ->andWhere('p.bestSeason = :season')
-                ->andWhere($qb = $plantRepository->createQueryBuilder('x')->expr()->in('p.id', $sub->getDQL()))
-                ->setParameter('season', $season)
-                ->add('orderBy', "CASE p.type WHEN 'Fruit' THEN 1 WHEN 'Légume' THEN 2 WHEN 'Herbe' THEN 3 ELSE 4 END, p.name ASC");
+            $qb = $plantRepository->createQueryBuilder('p');
+            $expr = $qb->expr();
+            $qb->andWhere('p.bestSeason = :season')
+               ->andWhere('p.user = :owner')
+               ->andWhere($expr->in('p.id', $sub->getDQL()))
+               ->setParameter('season', $season)
+               ->setParameter('owner', $ownerId)
+               ->add('orderBy', "CASE p.type WHEN 'Fruit' THEN 1 WHEN 'Légume' THEN 2 WHEN 'Herbe' THEN 3 ELSE 4 END, p.name ASC");
 
             $plants = $qb->getQuery()->getResult();
             $cacheItem->set($plants);

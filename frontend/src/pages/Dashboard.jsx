@@ -45,14 +45,12 @@ export default function Dashboard() {
   const [suggestions, setSuggestions] = useState(null)
   const [loadingData, setLoadingData] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
-  // 🚀 NOUVEAU : État pour la barre latérale mobile
   const [isSidebarMobileOpen, setIsSidebarMobileOpen] = useState(false) 
 
   const handleAddPlant = (newPlant) => {
     setPlants([...plants, newPlant])
   }
   
-  // 🚀 NOUVEAU : Fonction pour basculer l'état de la sidebar
   const toggleSidebarMobile = () => {
     setIsSidebarMobileOpen(!isSidebarMobileOpen)
   }
