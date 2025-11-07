@@ -7,6 +7,8 @@ use ApiPlatform\Metadata\Operation;
 use Doctrine\ORM\QueryBuilder;
 use Symfony\Bundle\SecurityBundle\Security;
 use App\Entity\Plant;
+use App\Entity\SuiviSnapshot;
+use App\Entity\UserPlantation;
 
 final class PlantOwnerExtension implements QueryCollectionExtensionInterface
 {
@@ -19,18 +21,25 @@ final class PlantOwnerExtension implements QueryCollectionExtensionInterface
         ?Operation $operation = null,
         array $context = []
     ): void {
-        if ($resourceClass !== Plant::class) {
-            return;
-        }
-
         $user = $this->security->getUser();
         if (!$user) {
             return;
         }
 
         $rootAlias = $queryBuilder->getRootAliases()[0] ?? 'o';
-        $queryBuilder
-            ->andWhere(sprintf('%s.user = :currentUser', $rootAlias))
-            ->setParameter('currentUser', $user);
+
+        if ($resourceClass === Plant::class || $resourceClass === UserPlantation::class) {
+            $queryBuilder
+                ->andWhere(sprintf('%s.user = :currentUser', $rootAlias))
+                ->setParameter('currentUser', $user);
+            return;
+        }
+
+        if ($resourceClass === SuiviSnapshot::class) {
+            $queryBuilder
+                ->join(sprintf('%s.userPlantation', $rootAlias), 'up')
+                ->andWhere('up.user = :currentUser')
+                ->setParameter('currentUser', $user);
+        }
     }
 }

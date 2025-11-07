@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\PlantTemplateRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -32,69 +34,80 @@ class PlantTemplate
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['plant:read', 'plant_template:read'])]
+    #[Groups(['plant:read', 'plant_template:read', 'user_plantation:read'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['plant:read'])]
+    #[Groups(['plant:read', 'user_plantation:read'])]
     private ?User $user = null;
 
     #[ORM\Column(length: 100)]
     #[Assert\NotBlank]
-    #[Groups(['plant_template:read', 'plant_template:write'])]
+    #[Groups(['plant_template:read', 'plant_template:write', 'user_plantation:read'])]
     private ?string $name = null;
 
     #[ORM\Column(length: 50)]
     #[Assert\NotBlank]
-    #[Groups(['plant_template:read', 'plant_template:write'])]
+    #[Groups(['plant_template:read', 'plant_template:write', 'user_plantation:read'])]
     private ?string $type = null;
 
     #[ORM\Column]
     #[Assert\Positive]
-    #[Groups(['plant_template:read', 'plant_template:write'])]
+    #[Groups(['plant_template:read', 'plant_template:write', 'user_plantation:read'])]
     private ?int $expectedHarvestDays = null;
 
     #[ORM\Column(length: 255, nullable: true)]
-    #[Groups(['plant_template:read', 'plant_template:write'])]
+    #[Groups(['plant_template:read', 'plant_template:write', 'user_plantation:read'])]
     private ?string $location = null;
 
     #[ORM\Column(type: 'text', nullable: true)]
-    #[Groups(['plant_template:read', 'plant_template:write'])]
+    #[Groups(['plant_template:read', 'plant_template:write', 'user_plantation:read'])]
     private ?string $notes = null;
 
     #[ORM\Column]
-    #[Groups(['plant_template:read'])]
+    #[Groups(['plant_template:read', 'user_plantation:read'])]
     private ?\DateTimeImmutable $createdAt = null;
 
     #[ORM\Column(length: 20, nullable: true)]
-    #[Groups(['plant_template:read', 'plant_template:write'])]
+    #[Groups(['plant_template:read', 'plant_template:write', 'user_plantation:read'])]
     private ?string $bestSeason = null;
 
     #[ORM\Column(length: 50, nullable: true)]
-    #[Groups(['plant_template:read', 'plant_template:write'])]
+    #[Groups(['plant_template:read', 'plant_template:write', 'user_plantation:read'])]
     private ?string $wateringFrequency = null;
 
     #[ORM\Column(length: 50, nullable: true)]
-    #[Groups(['plant_template:read', 'plant_template:write'])]
+    #[Groups(['plant_template:read', 'plant_template:write', 'user_plantation:read'])]
     private ?string $sunExposure = null;
 
     #[ORM\Column(type: 'json', nullable: true)]
-    #[Groups(['plant_template:read', 'plant_template:write'])]
+    #[Groups(['plant_template:read', 'plant_template:write', 'user_plantation:read'])]
     private ?array $cyclePhasesJson = null;
 
     #[ORM\Column(nullable: true)]
-    #[Groups(['plant_template:read', 'plant_template:write'])]
+    #[Groups(['plant_template:read', 'plant_template:write', 'user_plantation:read'])]
     private ?int $wateringQuantityMl = null;
 
     #[ORM\Column(length: 150, nullable: true)]
-    #[Groups(['plant_template:read', 'plant_template:write'])]
+    #[Groups(['plant_template:read', 'plant_template:write', 'user_plantation:read'])]
     private ?string $imageSlug = null;
+
+    /**
+     * @var Collection<int, UserPlantation>
+     */
+    #[ORM\OneToMany(mappedBy: 'plantTemplate', targetEntity: UserPlantation::class)]
+    private Collection $userPlantations;
 
     #[ORM\PrePersist]
     public function onPrePersist(): void
     {
         $this->createdAt = new \DateTimeImmutable();
+    }
+
+    public function __construct()
+    {
+        $this->userPlantations = new ArrayCollection();
     }
 
     public function getId(): ?int { return $this->id; }
@@ -136,6 +149,35 @@ class PlantTemplate
 
     public function getImageSlug(): ?string { return $this->imageSlug; }
     public function setImageSlug(?string $v): self { $this->imageSlug = $v; return $this; }
+
+    /**
+     * @return Collection<int, UserPlantation>
+     */
+    public function getUserPlantations(): Collection
+    {
+        return $this->userPlantations;
+    }
+
+    public function addUserPlantation(UserPlantation $userPlantation): self
+    {
+        if (!$this->userPlantations->contains($userPlantation)) {
+            $this->userPlantations->add($userPlantation);
+            $userPlantation->setPlantTemplate($this);
+        }
+
+        return $this;
+    }
+
+    public function removeUserPlantation(UserPlantation $userPlantation): self
+    {
+        if ($this->userPlantations->removeElement($userPlantation)) {
+            if ($userPlantation->getPlantTemplate() === $this) {
+                $userPlantation->setPlantTemplate(null);
+            }
+        }
+
+        return $this;
+    }
 }
 
 

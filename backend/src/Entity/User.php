@@ -21,14 +21,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['plant:read'])]
+    #[Groups(['plant:read', 'user_plantation:read'])]
     private ?int $id = null;
 
     // --------------------------
     // ✉️ Email unique de l'utilisateur
     // --------------------------
     #[ORM\Column(length: 180, unique: true)]
-    #[Groups(['plant:read'])]
+    #[Groups(['plant:read', 'user_plantation:read'])]
     private ?string $email = null;
 
     // --------------------------
@@ -52,9 +52,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(mappedBy: 'user', targetEntity: Plant::class, orphanRemoval: true)]
     private Collection $plants;
 
+    /**
+     * @var Collection<int, UserPlantation>
+     */
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: UserPlantation::class, orphanRemoval: true)]
+    #[Groups(['user_plantation:read'])]
+    private Collection $userPlantations;
+
     public function __construct()
     {
         $this->plants = new ArrayCollection();
+        $this->userPlantations = new ArrayCollection();
     }
 
     // --------------------------
@@ -142,6 +150,35 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         if ($this->plants->removeElement($plant)) {
             if ($plant->getUser() === $this) {
                 $plant->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, UserPlantation>
+     */
+    public function getUserPlantations(): Collection
+    {
+        return $this->userPlantations;
+    }
+
+    public function addUserPlantation(UserPlantation $userPlantation): static
+    {
+        if (!$this->userPlantations->contains($userPlantation)) {
+            $this->userPlantations->add($userPlantation);
+            $userPlantation->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeUserPlantation(UserPlantation $userPlantation): static
+    {
+        if ($this->userPlantations->removeElement($userPlantation)) {
+            if ($userPlantation->getUser() === $this) {
+                $userPlantation->setUser(null);
             }
         }
 

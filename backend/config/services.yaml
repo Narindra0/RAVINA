@@ -4,6 +4,8 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    env(METEO_BASE_URL): 'https://api.open-meteo.com'
+    meteo.base_url: '%env(string:METEO_BASE_URL)%'
 
 services:
     # default configuration for services in *this* file
@@ -33,6 +35,13 @@ services:
             $kernelProjectDir: '%kernel.project_dir%'
         # Vous devez également l'étiqueter (tagger) comme service ApiPlatform Processor
         tags: ['api_platform.state_processor']
+
+    App\DataProcessor\UserPlantationProcessor:
+        tags: ['api_platform.state_processor']
+
+    App\Service\MeteoService:
+        arguments:
+            $meteoBaseUrl: '%meteo.base_url%'
 
     App\Security\PlantOwnerExtension:
         tags: ['api_platform.doctrine.orm.query_extension.collection']

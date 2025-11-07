@@ -5,7 +5,7 @@ import {
     Button, 
     Drawer 
 } from '@mui/material'
-import { Home, Logout, Cloud } from '@mui/icons-material'
+import { Home, Logout, Cloud, LocalFlorist } from '@mui/icons-material'
 // 🚨 CORRECTION: Utilisation des hooks et composants de TanStack Router
 import { Link, useRouterState } from '@tanstack/react-router' 
 
@@ -159,6 +159,17 @@ export default function Sidebar({ user, isMobileOpen, onClose }) {
             >
               <Cloud sx={{ fontSize: 22 }} />
               Météo Détaillée
+            </Button>
+        </Link>
+
+        {/* Bouton Plantations */}
+        {/* 🚨 Utilisation du composant Link de TanStack */}
+        <Link to="/plantations" style={sidebarStyles.tanstackLinkBase} onClick={onClose}>
+            <Button 
+                sx={sidebarStyles.navButton(isPathActive('/plantations'))}
+            >
+              <LocalFlorist sx={{ fontSize: 22 }} />
+              Plantations
             </Button>
         </Link>
 
