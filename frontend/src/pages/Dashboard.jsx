@@ -60,7 +60,7 @@ export default function Dashboard() {
       setLoadingData(true)
       const [userRes, plantsRes, suggestionsRes] = await Promise.allSettled([
         api.get('/user'),
-        api.get('/plants', { params: { itemsPerPage: 5, page: 1 } }),
+        api.get('/plant_templates', { params: { itemsPerPage: 5, page: 1 } }),
         api.get('/suggestions/plants'),
       ])
 
@@ -72,8 +72,8 @@ export default function Dashboard() {
 
       if (plantsRes.status === 'fulfilled') {
         const data = plantsRes.value.data
-        const plantData = Array.isArray(data) ? data : data['member'] || []
-        setPlants(plantData)
+        const templateData = Array.isArray(data) ? data : (data['member'] || data['hydra:member'] || [])
+        setPlants(templateData)
       } else {
         console.error('Erreur lors du chargement des plantes', plantsRes.reason)
       }
@@ -93,10 +93,10 @@ export default function Dashboard() {
     if (showAllPlants) return
     setLoadingMore(true)
     try {
-      const res = await api.get('/plants')
+      const res = await api.get('/plant_templates')
       const data = res.data
-      const plantData = Array.isArray(data) ? data : data['member'] || []
-      setPlants(plantData)
+      const templateData = Array.isArray(data) ? data : (data['member'] || data['hydra:member'] || [])
+      setPlants(templateData)
       setShowAllPlants(true)
     } catch (err) {
       console.error('Erreur lors du chargement de toutes les plantes', err)
@@ -183,8 +183,8 @@ export default function Dashboard() {
                 <Grid container spacing={1.5}>
                   {suggestions.suggestions.map((plant) => (
                     <Grid item xs={12} sm={6} md={3} key={plant.id}>
-                      <Card sx={dashboardStyles.suggestionCard}>
-                        <Box sx={dashboardStyles.suggestionCardImage}>
+                      <Card sx={dashboardStyles.plantCard}>
+                        <Box sx={dashboardStyles.plantCardImage}>
                           <img
                             src={getPlantImagePath(plant.imageSlug)}
                             alt={plant.name}
@@ -193,17 +193,13 @@ export default function Dashboard() {
                           />
                         </Box>
                         <CardContent>
-                          <Typography variant="h6" sx={dashboardStyles.suggestionCardTitle}>
-                            {plant.name}
-                          </Typography>
-                          <Typography variant="body2" sx={dashboardStyles.suggestionCardType}>
-                            {plant.type}
-                          </Typography>
-                          <Box sx={dashboardStyles.suggestionCardInfo}>
-                            <WaterDrop sx={{ fontSize: 16, color: '#3b82f6' }} />
-                            <Typography variant="body2" sx={dashboardStyles.suggestionCardInfoText}>
-                              {plant.wateringFrequency || 'Non spécifié'}
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="h6" sx={dashboardStyles.plantCardTitle}>
+                              {plant.name}
                             </Typography>
+                            <Box sx={dashboardStyles.plantCardBadge}>
+                              {plant.type}
+                            </Box>
                           </Box>
                         </CardContent>
                       </Card>
@@ -253,17 +249,25 @@ export default function Dashboard() {
                           />
                         </Box>
                         <CardContent>
-                          <Typography variant="h6" sx={dashboardStyles.plantCardTitle}>
-                            {plant.name}
-                          </Typography>
-                          <Box sx={dashboardStyles.plantCardBadge}>
-                            {plant.type}
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                            <Typography variant="h6" sx={dashboardStyles.plantCardTitle}>
+                              {plant.name}
+                            </Typography>
+                            <Box sx={dashboardStyles.plantCardBadge}>
+                              {plant.type}
+                            </Box>
                           </Box>
 
                           <Box sx={dashboardStyles.plantCardDetails}>
                             <Box sx={dashboardStyles.plantCardDetailItem}>
                               <WaterDrop sx={{ fontSize: 18, color: '#3b82f6' }} />
-                              <Typography variant="body2">{plant.wateringFrequency || 'N/A'}</Typography>
+                              <Typography variant="body2">
+                                {plant.wateringFrequency
+                                  ? Number(plant.wateringFrequency) === 1
+                                    ? 'Tous les jours'
+                                    : `Tous les ${plant.wateringFrequency} jours`
+                                  : 'N/A'}
+                              </Typography>
                             </Box>
                             <Box sx={dashboardStyles.plantCardDetailItem}>
                               <WbSunny sx={{ fontSize: 18, color: '#fbbf24' }} />

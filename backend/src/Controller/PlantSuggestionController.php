@@ -1,8 +1,8 @@
 <?php
 namespace App\Controller;
 
-use App\Entity\Plant;
-use App\Repository\PlantRepository;
+use App\Entity\PlantTemplate;
+use App\Repository\PlantTemplateRepository;
 use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -12,7 +12,7 @@ use Symfony\Component\Routing\Annotation\Route;
 class PlantSuggestionController extends AbstractController
 {
     #[Route('/api/suggestions/plants', name: 'api_plants_suggestions', methods: ['GET'])]
-    public function suggestions(Request $request, PlantRepository $plantRepository, CacheItemPoolInterface $cache): JsonResponse
+    public function suggestions(Request $request, PlantTemplateRepository $plantTemplateRepository, CacheItemPoolInterface $cache): JsonResponse
     {
         $month = (int) $request->query->get('month', date('n'));
         $ownerId = (int)($_ENV['SUGGESTION_OWNER_ID'] ?? 1);
@@ -28,27 +28,27 @@ class PlantSuggestionController extends AbstractController
         $cacheKey = 'plant_suggestions_user_' . $ownerId . '_' . $season;
         $cacheItem = $cache->getItem($cacheKey);
         if (!$cacheItem->isHit()) {
-            $sub = $plantRepository->createQueryBuilder('p2')
-                ->select('MAX(p2.id)')
-                ->andWhere('p2.bestSeason = :season')
-                ->andWhere('p2.user = :owner')
-                ->groupBy('p2.name');
+            $sub = $plantTemplateRepository->createQueryBuilder('pt2')
+                ->select('MAX(pt2.id)')
+                ->andWhere('pt2.bestSeason = :season')
+                ->andWhere('pt2.user = :owner')
+                ->groupBy('pt2.name');
 
-            $qb = $plantRepository->createQueryBuilder('p');
+            $qb = $plantTemplateRepository->createQueryBuilder('pt');
             $expr = $qb->expr();
-            $qb->andWhere('p.bestSeason = :season')
-               ->andWhere('p.user = :owner')
-               ->andWhere($expr->in('p.id', $sub->getDQL()))
+            $qb->andWhere('pt.bestSeason = :season')
+               ->andWhere('pt.user = :owner')
+               ->andWhere($expr->in('pt.id', $sub->getDQL()))
                ->setParameter('season', $season)
                ->setParameter('owner', $ownerId)
-               ->add('orderBy', "CASE p.type WHEN 'Fruit' THEN 1 WHEN 'Légume' THEN 2 WHEN 'Herbe' THEN 3 ELSE 4 END, p.name ASC");
+               ->add('orderBy', "CASE pt.type WHEN 'Fruit' THEN 1 WHEN 'Légume' THEN 2 WHEN 'Herbe' THEN 3 ELSE 4 END, pt.name ASC");
 
-            $plants = $qb->getQuery()->getResult();
-            $cacheItem->set($plants);
+            $plantTemplates = $qb->getQuery()->getResult();
+            $cacheItem->set($plantTemplates);
             $cacheItem->expiresAfter(300);
             $cache->save($cacheItem);
         } else {
-            $plants = $cacheItem->get();
+            $plantTemplates = $cacheItem->get();
         }
         
         $monthNames = [
@@ -60,15 +60,15 @@ class PlantSuggestionController extends AbstractController
         $data = [
             'currentMonth' => $monthNames[$month] ?? 'Inconnu',
             'currentSeason' => $season,
-            'suggestions' => array_map(fn(Plant $p) => [
-                'id' => $p->getId(),
-                'name' => $p->getName(),
-                'type' => $p->getType(),
-                'bestSeason' => $p->getBestSeason(),
-                'wateringFrequency' => $p->getWateringFrequency(),
-                'sunExposure' => $p->getSunExposure(),
-                'imageSlug' => $p->getImageSlug(), // 🚀 Ligne ajoutée
-            ], $plants),
+            'suggestions' => array_map(fn(PlantTemplate $plantTemplate) => [
+                'id' => $plantTemplate->getId(),
+                'name' => $plantTemplate->getName(),
+                'type' => $plantTemplate->getType(),
+                'bestSeason' => $plantTemplate->getBestSeason(),
+                'wateringFrequency' => $plantTemplate->getWateringFrequency(),
+                'sunExposure' => $plantTemplate->getSunExposure(),
+                'imageSlug' => $plantTemplate->getImageSlug(),
+            ], $plantTemplates),
         ];
         
         return $this->json($data);
