@@ -142,7 +142,7 @@ export default function Sidebar({ user, isMobileOpen, onClose }) {
 
         {/* Dashboard Button */}
         {/* 🚨 Utilisation du composant Link de TanStack */}
-        <Link to="/" style={sidebarStyles.tanstackLinkBase} onClick={onClose}>
+        <Link to="/dashboard" style={sidebarStyles.tanstackLinkBase} onClick={onClose}>
             <Button 
                 sx={sidebarStyles.navButton(isPathActive('/'))}
             >

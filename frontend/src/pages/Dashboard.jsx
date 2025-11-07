@@ -110,14 +110,6 @@ export default function Dashboard() {
     return null
   }
 
-  if (loadingData) {
-    return (
-      <Box sx={dashboardStyles.loadingContainer}>
-        <CircularProgress sx={{ color: '#10b981' }} size={50} />
-      </Box>
-    )
-  }
-
   return (
     <Box sx={dashboardStyles.root}>
       {/* 🚀 BOUTON DE MENU MOBILE : Affiché uniquement sur les petits écrans */}
@@ -150,158 +142,158 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <Box sx={dashboardStyles.mainContent}>
-        <Container maxWidth="xl" sx={dashboardStyles.container}>
-          
-          {/* Header */}
-          <Box sx={dashboardStyles.headerSection}>
-            <Typography variant="h3" sx={dashboardStyles.welcomeTitle}>
-              Bienvenue sur Ravina,
-            </Typography>
-            <Typography variant="h6" sx={dashboardStyles.welcomeSubtitle}>
-              Bonjour {user ? user.email.split('@')[0] : 'Narindra'},
-            </Typography>
+        {loadingData ? (
+          <Box sx={dashboardStyles.loadingContainer}>
+            <CircularProgress sx={{ color: '#10b981' }} size={50} />
           </Box>
-
-          {/* Feature Banner */}
-          <Suspense fallback={null}>
-            <WeatherCard />
-          </Suspense>
-
-
-
-
-
-          {/* Seasonal Suggestions */}
-          <Box sx={dashboardStyles.sectionContainer}>
-            <Box sx={dashboardStyles.sectionHeader}>
-              <Box sx={dashboardStyles.sectionHeaderLeft}>
-                <CalendarMonth sx={dashboardStyles.sectionIcon} />
-                <Box>
-                  <Typography variant="h5" sx={dashboardStyles.sectionTitle}>
-                    Suggestions saisonnières
-                  </Typography>
-                  <Typography variant="body2" sx={dashboardStyles.sectionSubtitle}>
-                    Saison : {suggestions?.currentSeason || 'Printemps'}
-                  </Typography>
-                </Box>
-              </Box>
+        ) : (
+          <Container maxWidth="xl" sx={dashboardStyles.container}>
+            {/* Header */}
+            <Box sx={dashboardStyles.headerSection}>
+              <Typography variant="h3" sx={dashboardStyles.welcomeTitle}>
+                Bienvenue sur Ravina,
+              </Typography>
+              <Typography variant="h6" sx={dashboardStyles.welcomeSubtitle}>
+                Bonjour {user ? user.email.split('@')[0] : 'Narindra'},
+              </Typography>
             </Box>
 
-            {suggestions && suggestions.suggestions && suggestions.suggestions.length > 0 ? (
-              <Grid container spacing={1.5}>
-                {suggestions.suggestions.map((plant) => (
-                  <Grid item xs={12} sm={6} md={3} key={plant.id}>
-                    <Card sx={dashboardStyles.suggestionCard}>
-                      <Box sx={dashboardStyles.suggestionCardImage}>
-                        <img 
-                          src={getPlantImagePath(plant.imageSlug)} 
-                          alt={plant.name}
-                          loading="lazy"
-                          style={{ width: '220px', height: '100%', objectFit: 'cover', display: 'block' }}
-                        />
-                      </Box>
-                      <CardContent>
-                        <Typography variant="h6" sx={dashboardStyles.suggestionCardTitle}>
-                          {plant.name}
-                        </Typography>
-                        <Typography variant="body2" sx={dashboardStyles.suggestionCardType}>
-                          {plant.type}
-                        </Typography>
-                        <Box sx={dashboardStyles.suggestionCardInfo}>
-                          <WaterDrop sx={{ fontSize: 16, color: '#3b82f6' }} />
-                          <Typography variant="body2" sx={dashboardStyles.suggestionCardInfoText}>
-                            {plant.wateringFrequency || 'Non spécifié'}
-                          </Typography>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            ) : (
-              <Box sx={dashboardStyles.emptyState}>
-                <Typography>Aucune suggestion pour la saison actuelle.</Typography>
-              </Box>
-            )}
-          </Box>
+            {/* Feature Banner */}
+            <Suspense fallback={null}>
+              <WeatherCard />
+            </Suspense>
 
-          {/* My Listings */}
-          <Box sx={dashboardStyles.sectionContainer}>
-            <Box sx={dashboardStyles.sectionHeader}>
-              <Typography variant="h5" sx={dashboardStyles.sectionTitle}>
-                Mes plantations
-              </Typography>
-              {!showAllPlants && plants.length >= 5 && (
-                <Button 
-                  endIcon={<ArrowForward />}
-                  sx={dashboardStyles.viewAllButton}
-                  onClick={handleViewAll}
-                  disabled={loadingMore}
-                >
-                  {loadingMore ? 'Chargement…' : 'Voir toutes'}
-                </Button>
+            {/* Seasonal Suggestions */}
+            <Box sx={dashboardStyles.sectionContainer}>
+              <Box sx={dashboardStyles.sectionHeader}>
+                <Box sx={dashboardStyles.sectionHeaderLeft}>
+                  <CalendarMonth sx={dashboardStyles.sectionIcon} />
+                  <Box>
+                    <Typography variant="h5" sx={dashboardStyles.sectionTitle}>
+                      Suggestions saisonnières
+                    </Typography>
+                    <Typography variant="body2" sx={dashboardStyles.sectionSubtitle}>
+                      Saison : {suggestions?.currentSeason || 'Printemps'}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
+
+              {suggestions && suggestions.suggestions && suggestions.suggestions.length > 0 ? (
+                <Grid container spacing={1.5}>
+                  {suggestions.suggestions.map((plant) => (
+                    <Grid item xs={12} sm={6} md={3} key={plant.id}>
+                      <Card sx={dashboardStyles.suggestionCard}>
+                        <Box sx={dashboardStyles.suggestionCardImage}>
+                          <img
+                            src={getPlantImagePath(plant.imageSlug)}
+                            alt={plant.name}
+                            loading="lazy"
+                            style={{ width: '220px', height: '100%', objectFit: 'cover', display: 'block' }}
+                          />
+                        </Box>
+                        <CardContent>
+                          <Typography variant="h6" sx={dashboardStyles.suggestionCardTitle}>
+                            {plant.name}
+                          </Typography>
+                          <Typography variant="body2" sx={dashboardStyles.suggestionCardType}>
+                            {plant.type}
+                          </Typography>
+                          <Box sx={dashboardStyles.suggestionCardInfo}>
+                            <WaterDrop sx={{ fontSize: 16, color: '#3b82f6' }} />
+                            <Typography variant="body2" sx={dashboardStyles.suggestionCardInfoText}>
+                              {plant.wateringFrequency || 'Non spécifié'}
+                            </Typography>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              ) : (
+                <Box sx={dashboardStyles.emptyState}>
+                  <Typography>Aucune suggestion pour la saison actuelle.</Typography>
+                </Box>
               )}
             </Box>
 
-            {plants.length === 0 ? (
-              <Box sx={dashboardStyles.emptyState}>
-                <Typography>Vous n'avez encore enregistré aucune plante.</Typography>
+            {/* My Listings */}
+            <Box sx={dashboardStyles.sectionContainer}>
+              <Box sx={dashboardStyles.sectionHeader}>
+                <Typography variant="h5" sx={dashboardStyles.sectionTitle}>
+                  Mes plantations
+                </Typography>
+                {!showAllPlants && plants.length >= 5 && (
+                  <Button
+                    endIcon={<ArrowForward />}
+                    sx={dashboardStyles.viewAllButton}
+                    onClick={handleViewAll}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? 'Chargement…' : 'Voir toutes'}
+                  </Button>
+                )}
               </Box>
-            ) : (
-              <Grid container spacing={1.5}>
-                {(showAllPlants ? plants : plants.slice(0, 5)).map((plant) => (
-                  <Grid item xs={12} sm={6} md={3} key={plant.id}>
-                    <Card sx={dashboardStyles.plantCard}>
-                      <Box sx={dashboardStyles.plantCardImage}>
-                        <img 
-                          src={getPlantImagePath(plant.imageSlug)} 
-                          alt={plant.name}
-                          loading="lazy"
-                          style={{ width: '220px', height: '100%', objectFit: 'cover', display: 'block' }}
-                        />
-                      </Box>
-                      <CardContent>
-                        <Typography variant="h6" sx={dashboardStyles.plantCardTitle}>
-                          {plant.name}
-                        </Typography>
-                        <Box sx={dashboardStyles.plantCardBadge}>
-                          {plant.type}
-                        </Box>
 
-                        <Box sx={dashboardStyles.plantCardDetails}>
-                          <Box sx={dashboardStyles.plantCardDetailItem}>
-                            <WaterDrop sx={{ fontSize: 18, color: '#3b82f6' }} />
-                            <Typography variant="body2">{plant.wateringFrequency || 'N/A'}</Typography>
-                          </Box>
-                          <Box sx={dashboardStyles.plantCardDetailItem}>
-                            <WbSunny sx={{ fontSize: 18, color: '#fbbf24' }} />
-                            <Typography variant="body2">{plant.sunExposure || 'N/A'}</Typography>
-                          </Box>
-                          <Box sx={dashboardStyles.plantCardDetailItem}>
-                            <Schedule sx={{ fontSize: 18, color: '#6b7280' }} />
-                            <Typography variant="body2">Récolte: {plant.expectedHarvestDays}j</Typography>
-                          </Box>
+              {plants.length === 0 ? (
+                <Box sx={dashboardStyles.emptyState}>
+                  <Typography>Vous n'avez encore enregistré aucune plante.</Typography>
+                </Box>
+              ) : (
+                <Grid container spacing={1.5}>
+                  {(showAllPlants ? plants : plants.slice(0, 5)).map((plant) => (
+                    <Grid item xs={12} sm={6} md={3} key={plant.id}>
+                      <Card sx={dashboardStyles.plantCard}>
+                        <Box sx={dashboardStyles.plantCardImage}>
+                          <img
+                            src={getPlantImagePath(plant.imageSlug)}
+                            alt={plant.name}
+                            loading="lazy"
+                            style={{ width: '220px', height: '100%', objectFit: 'cover', display: 'block' }}
+                          />
                         </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            )}
+                        <CardContent>
+                          <Typography variant="h6" sx={dashboardStyles.plantCardTitle}>
+                            {plant.name}
+                          </Typography>
+                          <Box sx={dashboardStyles.plantCardBadge}>
+                            {plant.type}
+                          </Box>
 
-            <Box sx={dashboardStyles.addButtonContainer}>
-              <Button 
-                variant="contained"
-                startIcon={<AddCircleOutline />}
-                onClick={() => setShowAddModal(true)}
-                sx={dashboardStyles.addPlantButton}
-              >
-                Ajouter une nouvelle plante
-              </Button>
+                          <Box sx={dashboardStyles.plantCardDetails}>
+                            <Box sx={dashboardStyles.plantCardDetailItem}>
+                              <WaterDrop sx={{ fontSize: 18, color: '#3b82f6' }} />
+                              <Typography variant="body2">{plant.wateringFrequency || 'N/A'}</Typography>
+                            </Box>
+                            <Box sx={dashboardStyles.plantCardDetailItem}>
+                              <WbSunny sx={{ fontSize: 18, color: '#fbbf24' }} />
+                              <Typography variant="body2">{plant.sunExposure || 'N/A'}</Typography>
+                            </Box>
+                            <Box sx={dashboardStyles.plantCardDetailItem}>
+                              <Schedule sx={{ fontSize: 18, color: '#6b7280' }} />
+                              <Typography variant="body2">Récolte: {plant.expectedHarvestDays}j</Typography>
+                            </Box>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </Grid>
+                  ))}
+                </Grid>
+              )}
+
+              <Box sx={dashboardStyles.addButtonContainer}>
+                <Button
+                  variant="contained"
+                  startIcon={<AddCircleOutline />}
+                  onClick={() => setShowAddModal(true)}
+                  sx={dashboardStyles.addPlantButton}
+                >
+                  Ajouter une nouvelle plante
+                </Button>
+              </Box>
             </Box>
-          </Box>
-
-        </Container>
+          </Container>
+        )}
       </Box>
 
       {/* Modal */}

@@ -207,37 +207,30 @@ export default function Meteo() {
       }
     }, [weatherData])
 
-    // Vues de chargement et d'erreur (Code non modifié, juste raccourci ici)
-    if (loading) {
-      // ... Rendu de chargement
-      return (
-        <Box sx={meteoStyles.root}>
-          <Box sx={{ display: { xs: 'block', md: 'none' }, position: 'fixed', top: 10, left: 10, zIndex: 1200 }}>
-            <IconButton color="primary" onClick={toggleSidebarMobile} sx={{ backgroundColor: 'white', boxShadow: 3 }}>
-              <MenuIcon />
-            </IconButton>
-          </Box>
-          <Sidebar isMobileOpen={isSidebarMobileOpen} onClose={toggleSidebarMobile} />
-          <Box sx={{ ...meteoStyles.mainContent, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+    const renderMainContent = () => {
+      if (loading) {
+        return (
+          <Box
+            sx={{
+              ...meteoStyles.mainContent,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              minHeight: '100vh',
+            }}
+          >
             <Box sx={{ textAlign: 'center' }}>
               <CircularProgress size={60} />
-              <Typography sx={{ mt: 2, color: '#64748b' }}>Chargement des données météo...</Typography>
+              <Typography sx={{ mt: 2, color: '#64748b' }}>
+                Chargement des données météo...
+              </Typography>
             </Box>
           </Box>
-        </Box>
-      )
-    }
+        )
+      }
 
-    if (error) {
-      // ... Rendu d'erreur
-      return (
-        <Box sx={meteoStyles.root}>
-          <Box sx={{ display: { xs: 'block', md: 'none' }, position: 'fixed', top: 10, left: 10, zIndex: 1200 }}>
-            <IconButton color="primary" onClick={toggleSidebarMobile} sx={{ backgroundColor: 'white', boxShadow: 3 }}>
-              <MenuIcon />
-            </IconButton>
-          </Box>
-          <Sidebar isMobileOpen={isSidebarMobileOpen} onClose={toggleSidebarMobile} />
+      if (error) {
+        return (
           <Box sx={meteoStyles.mainContent}>
             <Container maxWidth="md" sx={{ mt: 4 }}>
               <Alert severity="error" sx={{ mb: 2 }}>
@@ -249,175 +242,190 @@ export default function Meteo() {
               </Button>
             </Container>
           </Box>
+        )
+      }
+
+      if (!displayData) {
+        return null
+      }
+
+      return (
+        <Box sx={meteoStyles.mainContent}>
+          <Container
+            maxWidth="xl"
+            disableGutters
+            sx={{
+              px: { xs: 0, sm: 2 },
+              width: '100%',
+            }}
+          >
+            {/* Barre de recherche */}
+            <form onSubmit={handleSearch}>
+              <TextField
+                fullWidth
+                placeholder="Rechercher une ville (ex: Antananarivo, Toamasina, Mahajanga)"
+                variant="outlined"
+                size="small"
+                value={searchCity}
+                onChange={(e) => setSearchCity(e.target.value)}
+                sx={meteoStyles.searchField}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <Search sx={{ color: '#6b7280' }} />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </form>
+
+            {/* GRID 70/30 - Structure côte à côte DÈS LA TAILLE SM (Tablette) */}
+            <Grid
+              container
+              spacing={{ xs: 2, sm: 3, md: 4 }}
+              alignItems="stretch"
+            >
+              {/* COLONNE GAUCHE (70%) - Météo actuelle + détails */}
+              <Grid item xs={12} sm={8} md={8} lg={8}>
+                {/* Section météo principale */}
+                <Box sx={meteoStyles.mainWeatherSection}>
+                  <Box>
+                    <Typography sx={meteoStyles.cityName}>
+                      {displayData.city}
+                      {displayData.country && (
+                        <Typography
+                          component="span"
+                          sx={{ color: '#64748b', fontWeight: 400, fontSize: '0.8em', ml: 1 }}
+                        >
+                          {displayData.country}
+                        </Typography>
+                      )}
+                    </Typography>
+                    <Typography sx={meteoStyles.weatherCondition}>{displayData.condition}</Typography>
+                    <Typography sx={meteoStyles.tempDisplay}>{displayData.temp}°</Typography>
+                  </Box>
+                  <Box>
+                    <displayData.icon sx={{ ...meteoStyles.mainWeatherIcon, color: displayData.iconColor }} />
+                  </Box>
+                </Box>
+
+                {/* Prévisions Horaires */}
+                <Paper sx={meteoStyles.infoCard} elevation={0}>
+                  <Typography sx={meteoStyles.titleCase}>Prévisions des prochaines heures</Typography>
+                  <Box
+                    sx={{
+                      display: 'flex',
+                      overflowX: 'auto',
+                      gap: { xs: 0.5, sm: 1 },
+                      pb: 1,
+                      '&::-webkit-scrollbar': { height: '6px' },
+                      '&::-webkit-scrollbar-thumb': { backgroundColor: '#cbd5e1', borderRadius: 3 },
+                    }}
+                  >
+                    {displayData.hourlyForecast.map((hour, index) => (
+                      <HourlyForecastItem
+                        key={index}
+                        time={hour.time}
+                        temp={hour.temp}
+                        Icon={hour.icon}
+                        color={hour.color}
+                      />
+                    ))}
+                  </Box>
+                </Paper>
+
+                {/* Conditions de l'Air */}
+                <Paper sx={{ ...meteoStyles.infoCard, mt: 3 }} elevation={0}>
+                  <Typography sx={meteoStyles.titleCase}>Conditions Actuelles</Typography>
+                  <Grid container spacing={{ xs: 2, sm: 3 }}>
+                    {displayData.airConditions.map((condition, index) => (
+                      <Grid item xs={6} sm={6} key={index}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                          <condition.icon sx={{ fontSize: { xs: 22, sm: 24 }, color: '#64748b' }} />
+                          <Box>
+                            <Typography
+                              variant="body2"
+                              sx={{ color: '#64748b', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}
+                            >
+                              {condition.label}
+                            </Typography>
+                            <Typography
+                              variant="h6"
+                              sx={{ fontWeight: 700, mt: 0.5, fontSize: { xs: '1rem', sm: '1.25rem' } }}
+                            >
+                              {condition.value}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Paper>
+              </Grid>
+
+              {/* COLONNE DROITE (30%) - Prévisions 7 jours */}
+              <Grid item xs={12} sm={4} md={4} lg={4}>
+                <Paper
+                  sx={{
+                    ...meteoStyles.forecastCard,
+                    width: '100%',
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    boxSizing: 'border-box',
+                  }}
+                  elevation={0}
+                >
+                  <Typography sx={{ ...meteoStyles.titleCase, px: 0, flexShrink: 0 }}>
+                    Prévisions sur 7 Jours
+                  </Typography>
+
+                  {/* Container des prévisions avec scroll si nécessaire */}
+                  <Box
+                    sx={{
+                      flexGrow: 1,
+                      overflowY: 'auto',
+                      '&::-webkit-scrollbar': { width: '6px' },
+                      '&::-webkit-scrollbar-thumb': {
+                        backgroundColor: '#cbd5e1',
+                        borderRadius: 3,
+                      },
+                    }}
+                  >
+                    {displayData.dailyForecast.map((day, index) => (
+                      <DailyForecastItem
+                        key={index}
+                        day={day.day}
+                        icon={day.icon}
+                        color={day.color}
+                        low={day.low}
+                        high={day.high}
+                        tempScale={displayData.tempScale}
+                        isToday={day.isToday}
+                      />
+                    ))}
+                  </Box>
+                </Paper>
+              </Grid>
+            </Grid>
+          </Container>
         </Box>
       )
     }
 
-    if (!displayData) return null
+    return (
+      <Box sx={meteoStyles.root}>
+        {/* Bouton Menu Mobile */}
+        <Box sx={{ display: { xs: 'block', md: 'none' }, position: 'fixed', top: 10, left: 10, zIndex: 1200 }}>
+          <IconButton color="primary" onClick={toggleSidebarMobile} sx={{ backgroundColor: 'white', boxShadow: 3 }}>
+            <MenuIcon />
+          </IconButton>
+        </Box>
 
-  return (
-    <Box sx={meteoStyles.root}>
-      {/* Bouton Menu Mobile */}
-      <Box sx={{ display: { xs: 'block', md: 'none' }, position: 'fixed', top: 10, left: 10, zIndex: 1200 }}>
-        <IconButton color="primary" onClick={toggleSidebarMobile} sx={{ backgroundColor: 'white', boxShadow: 3 }}>
-          <MenuIcon />
-        </IconButton>
+        {/* La barre latérale qui prend de l'espace */}
+        <Sidebar isMobileOpen={isSidebarMobileOpen} onClose={toggleSidebarMobile} />
+
+        {renderMainContent()}
       </Box>
-
-      {/* La barre latérale qui prend de l'espace */}
-      <Sidebar isMobileOpen={isSidebarMobileOpen} onClose={toggleSidebarMobile} />
-
-      <Box sx={meteoStyles.mainContent}>
-        <Container 
-          maxWidth="xl" 
-          disableGutters 
-          sx={{ 
-            px: { xs: 0, sm: 2 },
-            width: '100%'
-          }}
-        >
-          
-          {/* Barre de recherche */}
-          <form onSubmit={handleSearch}>
-            <TextField
-              fullWidth
-              placeholder="Rechercher une ville (ex: Antananarivo, Toamasina, Mahajanga)"
-              variant="outlined"
-              size="small"
-              value={searchCity}
-              onChange={(e) => setSearchCity(e.target.value)}
-              sx={meteoStyles.searchField}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <Search sx={{ color: '#6b7280' }} />
-                  </InputAdornment>
-                ),
-              }}
-            />
-          </form>
-
-          {/* GRID 70/30 - Structure côte à côte DÈS LA TAILLE SM (Tablette) */}
-          <Grid 
-            container 
-            spacing={{ xs: 2, sm: 3, md: 4 }}
-            alignItems="stretch"
-          >
-            
-            {/* COLONNE GAUCHE (70%) - Météo actuelle + détails */}
-            <Grid item xs={12} sm={8} md={8} lg={8}>
-              
-              {/* Section météo principale */}
-              <Box sx={meteoStyles.mainWeatherSection}>
-                <Box>
-                  <Typography sx={meteoStyles.cityName}>
-                    {displayData.city}
-                    {displayData.country && (
-                      <Typography component="span" sx={{ color: '#64748b', fontWeight: 400, fontSize: '0.8em', ml: 1 }}>
-                        {displayData.country}
-                      </Typography>
-                    )}
-                  </Typography>
-                  <Typography sx={meteoStyles.weatherCondition}>{displayData.condition}</Typography>
-                  <Typography sx={meteoStyles.tempDisplay}>{displayData.temp}°</Typography>
-                </Box>
-                <Box>
-                  <displayData.icon sx={{ ...meteoStyles.mainWeatherIcon, color: displayData.iconColor }} />
-                </Box>
-              </Box>
-
-              {/* Prévisions Horaires */}
-              <Paper sx={meteoStyles.infoCard} elevation={0}>
-                <Typography sx={meteoStyles.titleCase}>Prévisions des prochaines heures</Typography>
-                <Box sx={{ 
-                  display: 'flex', 
-                  overflowX: 'auto', 
-                  gap: { xs: 0.5, sm: 1 }, 
-                  pb: 1, 
-                  '&::-webkit-scrollbar': { height: '6px' },
-                  '&::-webkit-scrollbar-thumb': { backgroundColor: '#cbd5e1', borderRadius: 3 }
-                }}>
-                  {displayData.hourlyForecast.map((hour, index) => (
-                    <HourlyForecastItem
-                      key={index}
-                      time={hour.time}
-                      temp={hour.temp}
-                      Icon={hour.icon}
-                      color={hour.color}
-                    />
-                  ))}
-                </Box>
-              </Paper>
-              
-              {/* Conditions de l'Air */}
-              <Paper sx={{ ...meteoStyles.infoCard, mt: 3 }} elevation={0}>
-                <Typography sx={meteoStyles.titleCase}>Conditions Actuelles</Typography>
-                <Grid container spacing={{ xs: 2, sm: 3 }}>
-                  {displayData.airConditions.map((condition, index) => (
-                    <Grid item xs={6} sm={6} key={index}>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <condition.icon sx={{ fontSize: { xs: 22, sm: 24 }, color: '#64748b' }} />
-                        <Box>
-                          <Typography variant="body2" sx={{ color: '#64748b', fontSize: { xs: '0.75rem', sm: '0.875rem' } }}>
-                            {condition.label}
-                          </Typography>
-                          <Typography variant="h6" sx={{ fontWeight: 700, mt: 0.5, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
-                            {condition.value}
-                          </Typography>
-                        </Box>
-                      </Box>
-                    </Grid>
-                  ))}
-                </Grid>
-              </Paper>
-            </Grid>
-
-            {/* COLONNE DROITE (30%) - Prévisions 7 jours */}
-            <Grid item xs={12} sm={4} md={4} lg={4}>
-              <Paper 
-                sx={{
-                  ...meteoStyles.forecastCard,
-                  width: '100%',
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  boxSizing: 'border-box'
-                }} 
-                elevation={0}
-              >
-                <Typography sx={{...meteoStyles.titleCase, px: 0, flexShrink: 0 }}>
-                  Prévisions sur 7 Jours
-                </Typography>
-                
-                {/* Container des prévisions avec scroll si nécessaire */}
-                <Box sx={{ 
-                  flexGrow: 1,
-                  overflowY: 'auto',
-                  '&::-webkit-scrollbar': { width: '6px' },
-                  '&::-webkit-scrollbar-thumb': { 
-                    backgroundColor: '#cbd5e1', 
-                    borderRadius: 3 
-                  }
-                }}>
-                  {displayData.dailyForecast.map((day, index) => (
-                    <DailyForecastItem
-                      key={index}
-                      day={day.day}
-                      icon={day.icon}
-                      color={day.color}
-                      low={day.low}
-                      high={day.high}
-                      tempScale={displayData.tempScale}
-                      isToday={day.isToday}
-                    />
-                  ))}
-                </Box>
-              </Paper>
-            </Grid>
-
-          </Grid>
-        </Container>
-      </Box>
-    </Box>
-  )
+    )
 }
