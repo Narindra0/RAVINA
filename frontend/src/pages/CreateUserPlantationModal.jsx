@@ -22,7 +22,7 @@ import { useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { api } from '../lib/axios'
 
-export default function CreateUserPlantationModal({ open, onClose, onCreated }) {
+export default function CreateUserPlantationModal({ open, onClose, onCreated, initialTemplateId }) {
   const theme = useTheme()
   const isXs = useMediaQuery(theme.breakpoints.down('sm'))
 
@@ -59,6 +59,13 @@ export default function CreateUserPlantationModal({ open, onClose, onCreated }) 
     }
     fetchTemplates()
   }, [open])
+
+  // Pré-sélectionner le template si fourni
+  useEffect(() => {
+    if (open && initialTemplateId) {
+      setForm((prev) => ({ ...prev, plantTemplate: initialTemplateId }))
+    }
+  }, [open, initialTemplateId])
 
   const handleChange = (e) => {
     const { name, value } = e.target

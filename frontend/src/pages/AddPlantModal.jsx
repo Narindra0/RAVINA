@@ -32,23 +32,22 @@ import {
 import { api } from '../lib/axios';
 import { addPlantStyles, PRIMARY_GREEN } from '../styles/AddPlant.styles';
 
-const plantTypes = ['Légume', 'Fruit', 'Fleur', 'Aromatique', 'Arbre'];
-const wateringFrequencies = ['Quotidien', 'Tous les 2 jours', 'Hebdomadaire', 'Bimensuel'];
-const sunExposures = ['Plein soleil', 'Mi-ombre', 'Ombre'];
-const bestSeasons = ['Printemps', 'Été', 'Automne', 'Hiver', 'Toute l\'année'];
+const plantTypes = ['Légume', 'Fruit', 'Fleur', 'Aromatique', 'Arbre', 'Autre'];
+const sunExposures = ['Plein soleil', 'Mi-ombre', 'Ombre', 'Intérieur', 'Extérieur'];
+const bestSeasons = ['Printemps', 'Été', 'Automne', 'Hiver', 'Toute l\'année', 'Variable'];
 
 export default function AddPlantModal({ open, onClose, onPlantAdded }) {
-    const todayIso = new Date().toISOString().slice(0, 10);
     const [formData, setFormData] = useState({
         name: '',
         type: '',
+        expectedHarvestDays: '',
         location: '',
+        notes: '',
+        bestSeason: '',
         wateringFrequency: '',
         sunExposure: '',
-        bestSeason: '',
-        expectedHarvestDays: '',
-        plantedAt: todayIso,
-        notes: '',
+        cyclePhasesJson: '',
+        wateringQuantityMl: '',
     });
     
     const [imageFile, setImageFile] = useState(null);
@@ -70,21 +69,10 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
-    // 🚀 Gestion de l'upload d'image (clic + drag&drop) avec compression simple
+    // 🚀 Gestion de l'upload d'image (clic + drag&drop) sans conversion
     const compressImageIfNeeded = async (file) => {
-        try {
-            if (!file.type.startsWith('image/')) return file;
-            const bitmap = await createImageBitmap(file);
-            const canvas = document.createElement('canvas');
-            canvas.width = bitmap.width;
-            canvas.height = bitmap.height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(bitmap, 0, 0);
-            const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/webp', 0.8));
-            return blob ? new File([blob], file.name.replace(/\.[^.]+$/, '.webp'), { type: 'image/webp' }) : file;
-        } catch {
-            return file;
-        }
+        // Ne pas convertir côté client, laisser l'extension d'origine
+        return file;
     };
 
     const applySelectedFile = async (file) => {
@@ -123,9 +111,25 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
     }
 
     const validateForm = () => {
-        if (!formData.name.trim() || !formData.type || !formData.location.trim() || !formData.plantedAt) {
-            setError('Veuillez remplir les champs requis : Nom, Type, Lieu, Date.');
+        if (!formData.name.trim() || !formData.type || !formData.location.trim()) {
+            setError('Veuillez remplir les champs requis : Nom, Type, Lieu.');
             return false;
+        }
+        if (formData.expectedHarvestDays && Number(formData.expectedHarvestDays) < 0) {
+            setError('Le nombre de jours estimés doit être positif.');
+            return false;
+        }
+        if (formData.wateringQuantityMl && Number(formData.wateringQuantityMl) < 0) {
+            setError('La quantité d\'arrosage doit être positive.');
+            return false;
+        }
+        if (formData.cyclePhasesJson) {
+            try {
+                JSON.parse(formData.cyclePhasesJson);
+            } catch {
+                setError('Le champ Cycle des phases doit contenir un JSON valide.');
+                return false;
+            }
         }
         if (imageFile && !imageFile.type.startsWith('image/')) {
             setError('Le fichier sélectionné n\'est pas une image valide.');
@@ -137,17 +141,56 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
         return true;
     };
 
+    // Génère un cycle standard en fonction du nombre total de jours
+    const generateCyclePhases = (totalDays) => {
+        const safeDays = Math.max(0, parseInt(totalDays || 0, 10));
+        if (!safeDays) return [];
+
+        const sowing = Math.max(1, Math.round(safeDays * 0.15));
+        const growth = Math.max(1, Math.round(safeDays * 0.55));
+        const flowering = Math.max(0, Math.round(safeDays * 0.15));
+        let harvest = safeDays - sowing - growth - flowering;
+        if (harvest < 0) harvest = 0;
+
+        const phases = [
+            { phase: 'Semis', jours: sowing },
+            { phase: 'Croissance', jours: growth },
+        ];
+        if (flowering > 0) phases.push({ phase: 'Floraison', jours: flowering });
+        phases.push({ phase: 'Récolte', jours: harvest });
+        return phases;
+    };
+
+    // Détecte si l'utilisateur a saisi manuellement un JSON non standard
+    const isUserEditedJson = (value) => {
+        try {
+            const parsed = JSON.parse(value || '[]');
+            return !Array.isArray(parsed) || parsed.some(p => typeof p.phase !== 'string' || typeof p.jours !== 'number');
+        } catch {
+            return !!value;
+        }
+    };
+
+    // Auto-génère le cycle quand expectedHarvestDays change, sans écraser une saisie manuelle
+    useEffect(() => {
+        if (!formData.expectedHarvestDays) return;
+        if (isUserEditedJson(formData.cyclePhasesJson)) return;
+        const auto = generateCyclePhases(formData.expectedHarvestDays);
+        setFormData(prev => ({ ...prev, cyclePhasesJson: JSON.stringify(auto) }));
+    }, [formData.expectedHarvestDays]);
+
     const resetForm = () => {
         setFormData({
             name: '',
             type: '',
+            expectedHarvestDays: '',
             location: '',
+            notes: '',
+            bestSeason: '',
             wateringFrequency: '',
             sunExposure: '',
-            bestSeason: '',
-            expectedHarvestDays: '',
-            plantedAt: todayIso,
-            notes: '',
+            cyclePhasesJson: '',
+            wateringQuantityMl: '',
         });
         handleRemoveImage(); // Utilise la fonction de suppression
         setError('');
@@ -166,38 +209,49 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
         setIsSubmitting(true);
         setError('');
 
-        const form = new FormData();
-
-        Object.keys(formData).forEach(key => {
-            let value = formData[key];
-            if (key === 'expectedHarvestDays') {
-                value = (parseInt(formData[key]) || 0).toString();
-            }
-            if (key === 'plantedAt' && value) {
-                // Normaliser au format YYYY-MM-DD
-                value = String(value);
-            }
-            form.append(key, value);
-        });
-
-        if (imageFile) {
-            form.append('imageFile', imageFile); 
-        }
-        
         try {
-            const res = await api.post('/plants', form); 
-            onPlantAdded(res.data); 
-            setSuccessMessage('Plante ajoutée avec succès !');
+            let imageSlug = null;
+            if (imageFile) {
+                const fd = new FormData();
+                fd.append('file', imageFile);
+                fd.append('name', formData.name || 'image');
+                const uploadRes = await api.post('/upload/plant-template-image', fd, {
+                    headers: { 'Accept': 'application/json' },
+                });
+                imageSlug = uploadRes.data?.imageSlug || null;
+            }
 
-            setTimeout(handleCloseModal, 1000); 
+            const payload = {
+                name: formData.name,
+                type: formData.type,
+                expectedHarvestDays: formData.expectedHarvestDays ? parseInt(formData.expectedHarvestDays, 10) : null,
+                location: formData.location || null,
+                notes: formData.notes || null,
+                bestSeason: formData.bestSeason || null,
+                wateringFrequency: formData.wateringFrequency || null,
+                sunExposure: formData.sunExposure || null,
+                cyclePhasesJson: formData.cyclePhasesJson ? JSON.parse(formData.cyclePhasesJson) : null,
+                wateringQuantityMl: formData.wateringQuantityMl ? parseInt(formData.wateringQuantityMl, 10) : null,
+                imageSlug,
+            };
 
+            const res = await api.post('/plant_templates', JSON.stringify(payload), {
+                headers: {
+                    'Content-Type': 'application/ld+json',
+                    'Accept': 'application/ld+json',
+                },
+            });
+
+            onPlantAdded(res.data);
+            setSuccessMessage('Modèle de plante enregistré avec succès !');
+
+            setTimeout(handleCloseModal, 1000);
         } catch (err) {
-            console.error('Erreur lors de l\'ajout de la plante:', err);
+            console.error('Erreur lors de la création du modèle de plante:', err);
             const apiError = err.response?.data?.detail 
                 || err.response?.data?.violations?.[0]?.message 
-                || 'Une erreur inconnue est survenue lors de l\'enregistrement.';
+                || 'Une erreur est survenue lors de l\'enregistrement.';
             setError(apiError);
-
         } finally {
             setIsSubmitting(false);
         }
@@ -216,7 +270,7 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
                         id="add-plant-title"  
                         sx={addPlantStyles.modalTitle}
                     >
-                        Ajouter une nouvelle plantation
+                        Inventaire des Plantes
                     </Typography>
                     <IconButton onClick={handleCloseModal} sx={addPlantStyles.closeIcon}>
                         <Close />
@@ -228,86 +282,42 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
 
                 <Box component="form" onSubmit={handleSubmit}>
                     <Grid container spacing={3}>
-                        
-                        {/* Ligne 1: Nom et Type */}
+                        {/* Nom - Type */}
                         <Grid item xs={12} sm={6}>
-                            <Box sx={addPlantStyles.formControl}> 
+                            <Box sx={addPlantStyles.formControl}>
                                 <TextField
-                                    required fullWidth label="Nom de la plante" name="name"
-                                    value={formData.name} onChange={handleChange} variant="outlined" size="small"
-                                    InputProps={{ startAdornment: <Grass sx={{ color: '#6c757d', mr: 1 }} /> }}
-                                />
-                            </Box>
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <Box sx={addPlantStyles.formControl}> 
-                                <FormControl fullWidth size="small" required>
-                                    <InputLabel>Type</InputLabel>
-                                    <Select name="type" value={formData.type} onChange={handleChange} label="Type" variant="outlined">
-                                        {plantTypes.map((type) => (<MenuItem key={type} value={type}>{type}</MenuItem>))}
-                                    </Select>
-                                </FormControl>
-                            </Box>
-                        </Grid>
-                    
-                        {/* Ligne 2: Lieu et Saison */}
-                        <Grid item xs={12} sm={6}>
-                            <Box sx={addPlantStyles.formControl}> 
-                                <TextField
-                                    required fullWidth label="Lieu (Ex: Pot A, Jardin Nord)" name="location"
-                                    value={formData.location} onChange={handleChange} variant="outlined" size="small"
-                                    InputProps={{ startAdornment: <LocationOn sx={{ color: '#6c757d', mr: 1 }} /> }}
-                                />
-                            </Box>
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <Box sx={addPlantStyles.formControl}> 
-                                <FormControl fullWidth size="small">
-                                    <InputLabel>Meilleure saison</InputLabel>
-                                    <Select name="bestSeason" value={formData.bestSeason} onChange={handleChange} label="Meilleure saison" variant="outlined">
-                                        {bestSeasons.map((season) => (<MenuItem key={season} value={season}>{season}</MenuItem>))}
-                                    </Select>
-                                </FormControl>
-                            </Box>
-                        </Grid>
-
-                        {/* Ligne 2b: Date de plantation */}
-                        <Grid item xs={12} sm={6}>
-                            <Box sx={addPlantStyles.formControl}> 
-                                <TextField
-                                    required fullWidth label="Date de plantation" name="plantedAt" type="date"
-                                    value={formData.plantedAt}
+                                    required
+                                    fullWidth
+                                    label="Nom de la plante"
+                                    name="name"
+                                    value={formData.name}
                                     onChange={handleChange}
-                                    variant="outlined" size="small"
-                                    InputLabelProps={{ shrink: true }}
-                                    InputProps={{ startAdornment: <CalendarMonth sx={{ color: '#6c757d', mr: 1 }} /> }}
+                                    variant="outlined"
+                                    size="small"
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <Grass sx={{ color: '#6c757d' }} />
+                                            </InputAdornment>
+                                        ),
+                                    }}
                                 />
                             </Box>
                         </Grid>
-
-                        {/* Ligne 3: Fréquence d'arrosage et Exposition au soleil */}
                         <Grid item xs={12} sm={6}>
-                            <Box sx={addPlantStyles.formControl}> 
-                                <FormControl fullWidth size="small">
-                                    <InputLabel>Fréquence d'arrosage</InputLabel>
-                                    <Select name="wateringFrequency" value={formData.wateringFrequency} onChange={handleChange} label="Fréquence d'arrosage" variant="outlined">
-                                        {wateringFrequencies.map((freq) => (
-                                            <MenuItem key={freq} value={freq}>
-                                                <Box display="flex" alignItems="center"><WaterDrop sx={{ fontSize: 18, mr: 1, color: '#00bcd4' }} /> {freq}</Box>
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            </Box>
-                        </Grid>
-                        <Grid item xs={12} sm={6}>
-                            <Box sx={addPlantStyles.formControl}> 
-                                <FormControl fullWidth size="small">
-                                    <InputLabel>Exposition au soleil</InputLabel>
-                                    <Select name="sunExposure" value={formData.sunExposure} onChange={handleChange} label="Exposition au soleil" variant="outlined">
-                                        {sunExposures.map((exposure) => (
-                                            <MenuItem key={exposure} value={exposure}>
-                                                <Box display="flex" alignItems="center"><WbSunny sx={{ fontSize: 18, mr: 1, color: '#ff9800' }} /> {exposure}</Box>
+                            <Box sx={addPlantStyles.formControl}>
+                                <FormControl size="small" required sx={addPlantStyles.selectControl}>
+                                    <InputLabel>Type</InputLabel>
+                                    <Select
+                                        name="type"
+                                        value={formData.type}
+                                        onChange={handleChange}
+                                        label="Type"
+                                        variant="outlined"
+                                    >
+                                        {plantTypes.map((type) => (
+                                            <MenuItem key={type} value={type}>
+                                                {type}
                                             </MenuItem>
                                         ))}
                                     </Select>
@@ -315,23 +325,160 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
                             </Box>
                         </Grid>
 
-                        {/* Ligne 4: Jours de récolte */}
-                        <Grid item xs={12}>
-                            <Box sx={addPlantStyles.formControl}> 
+                        {/* jours estimés - lieu */}
+                        <Grid item xs={12} sm={6}>
+                            <Box sx={addPlantStyles.formControl}>
                                 <TextField
-                                    fullWidth label="Jours avant récolte estimée" name="expectedHarvestDays"
-                                    value={formData.expectedHarvestDays} onChange={handleChange} type="number"
-                                    variant="outlined" size="small"
-                                    InputProps={{ 
-                                        startAdornment: <CalendarMonth sx={{ color: '#6c757d', mr: 1 }} />,
+                                    fullWidth
+                                    label="Jours estimés de la plantation"
+                                    name="expectedHarvestDays"
+                                    type="number"
+                                    value={formData.expectedHarvestDays}
+                                    onChange={handleChange}
+                                    variant="outlined"
+                                    size="small"
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <CalendarMonth sx={{ color: '#6c757d' }} />
+                                            </InputAdornment>
+                                        ),
                                         inputProps: { min: 0 },
-                                        endAdornment: <InputAdornment position="end">jours</InputAdornment>
+                                        endAdornment: <InputAdornment position="end">jours</InputAdornment>,
+                                    }}
+                                />
+                            </Box>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <Box sx={addPlantStyles.formControl}>
+                                <TextField
+                                    required
+                                    fullWidth
+                                    label="Lieu (Ex: Pot A, Jardin Nord)"
+                                    name="location"
+                                    value={formData.location}
+                                    onChange={handleChange}
+                                    variant="outlined"
+                                    size="small"
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <LocationOn sx={{ color: '#6c757d' }} />
+                                            </InputAdornment>
+                                        ),
                                     }}
                                 />
                             </Box>
                         </Grid>
 
-                        {/* Ligne 5: Upload de l'image (Amélioré) */}
+                        {/* meilleure saison - exposition soleil */}
+                        <Grid item xs={12} sm={6}>
+                            <Box sx={addPlantStyles.formControl}>
+                                <FormControl size="small" sx={addPlantStyles.selectControl}>
+                                    <InputLabel>Meilleure saison</InputLabel>
+                                    <Select
+                                        name="bestSeason"
+                                        value={formData.bestSeason}
+                                        onChange={handleChange}
+                                        label="Meilleure saison"
+                                        variant="outlined"
+                                    >
+                                        {bestSeasons.map((season) => (
+                                            <MenuItem key={season} value={season}>
+                                                {season}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Box>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <Box sx={addPlantStyles.formControl}>
+                                <FormControl size="small" sx={addPlantStyles.selectControl}>
+                                    <InputLabel>Exposition au soleil</InputLabel>
+                                    <Select
+                                        name="sunExposure"
+                                        value={formData.sunExposure}
+                                        onChange={handleChange}
+                                        label="Exposition au soleil"
+                                        variant="outlined"
+                                    >
+                                        {sunExposures.map((exposure) => (
+                                            <MenuItem key={exposure} value={exposure}>
+                                                <Box display="flex" alignItems="center" gap={1}>
+                                                    <WbSunny sx={{ fontSize: 18, color: '#ff9800' }} />
+                                                    {exposure}
+                                                </Box>
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            </Box>
+                        </Grid>
+
+                        {/* fréquence - quantité */}
+                        <Grid item xs={12} sm={6}>
+                            <Box sx={addPlantStyles.formControl}>
+                                <TextField
+                                    fullWidth
+                                    label="Fréquence d'arrosage"
+                                    name="wateringFrequency"
+                                    value={formData.wateringFrequency}
+                                    onChange={handleChange}
+                                    variant="outlined"
+                                    size="small"
+                                    placeholder="Ex: Tous les 3 jours, Quotidien..."
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <WaterDrop sx={{ color: '#00bcd4' }} />
+                                            </InputAdornment>
+                                        ),
+                                    }}
+                                />
+                            </Box>
+                        </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <Box sx={addPlantStyles.formControl}>
+                                <TextField
+                                    fullWidth
+                                    label="Quantité d'arrosage (ml)"
+                                    name="wateringQuantityMl"
+                                    type="number"
+                                    value={formData.wateringQuantityMl}
+                                    onChange={handleChange}
+                                    variant="outlined"
+                                    size="small"
+                                    InputProps={{
+                                        startAdornment: (
+                                            <InputAdornment position="start">
+                                                <WaterDrop sx={{ color: '#00bcd4' }} />
+                                            </InputAdornment>
+                                        ),
+                                        inputProps: { min: 0 },
+                                        endAdornment: <InputAdornment position="end">ml</InputAdornment>,
+                                    }}
+                                />
+                            </Box>
+                        </Grid>
+
+                        {/* notes (même largeur que select) */}
+                        <Grid item xs={12}>
+                            <Box sx={addPlantStyles.notesControl}>
+                                <TextField
+                                    fullWidth
+                                    label="Notes supplémentaires"
+                                    name="notes"
+                                    value={formData.notes}
+                                    onChange={handleChange}
+                                    multiline
+                                    rows={3}
+                                    variant="outlined"
+                                />
+                            </Box>
+                        </Grid>
+
+                        {/* image */}
                         <Grid item xs={12}>
                             <Box sx={addPlantStyles.imageUploadContainer}>
                                 <Grid container spacing={1} alignItems="center" justifyContent="center">
@@ -361,14 +508,14 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
                                                 color="error"
                                                 onClick={handleRemoveImage}
                                                 startIcon={<DeleteOutline />}
-                                                sx={{ 
-                                                    ...addPlantStyles.uploadButton, 
-                                                    color: '#f44336', 
+                                                sx={{
+                                                    ...addPlantStyles.uploadButton,
+                                                    color: '#f44336',
                                                     borderColor: '#f44336',
                                                     '&:hover': {
                                                         backgroundColor: 'rgba(244, 67, 54, 0.04)',
                                                         borderColor: '#f44336',
-                                                    }
+                                                    },
                                                 }}
                                             >
                                                 Supprimer
@@ -377,30 +524,23 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
                                     )}
                                 </Grid>
 
-                                {/* Zone de drop */}
-                                <Box onDrop={handleDrop} onDragOver={handleDragOver} sx={{ mt: 1, p: 2, border: '1px dashed #cbd5e1', borderRadius: 1, color: '#64748b', textAlign: 'center' }}>
+                                <Box
+                                    onDrop={handleDrop}
+                                    onDragOver={handleDragOver}
+                                    sx={{ mt: 1, p: 2, border: '1px dashed #cbd5e1', borderRadius: 1, color: '#64748b', textAlign: 'center' }}
+                                >
                                     Glissez-déposez une image ici
                                 </Box>
 
                                 {imagePreview && (
                                     <Box sx={{ mt: 2, textAlign: 'center' }}>
-                                        <img 
-                                            src={imagePreview} 
-                                            alt="Aperçu" 
-                                            style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '8px', objectFit: 'cover' }} 
+                                        <img
+                                            src={imagePreview}
+                                            alt="Aperçu"
+                                            style={{ maxWidth: '100%', maxHeight: '150px', borderRadius: '8px', objectFit: 'cover' }}
                                         />
                                     </Box>
                                 )}
-                            </Box>
-                        </Grid>
-
-                        {/* Ligne 6: Notes */}
-                        <Grid item xs={12}>
-                            <Box sx={addPlantStyles.formControl}> 
-                                <TextField
-                                    fullWidth label="Notes supplémentaires (Ex: maladie, traitement spécial)" name="notes"
-                                    value={formData.notes} onChange={handleChange} multiline rows={3} variant="outlined"
-                                />
                             </Box>
                         </Grid>
                     </Grid>
@@ -410,7 +550,7 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
                         fullWidth
                         variant="contained"
                         sx={addPlantStyles.submitButton}
-                        disabled={isSubmitting || successMessage || !formData.name.trim() || !formData.type || !formData.location.trim() || !formData.plantedAt}
+                        disabled={isSubmitting || successMessage || !formData.name.trim() || !formData.type || !formData.location.trim()}
                         startIcon={isSubmitting ? <CircularProgress size={20} color="inherit" /> : <AddCircleOutline />}
                     >
                         {isSubmitting ? 'Ajout en cours...' : 'Enregistrer ma nouvelle plante'}

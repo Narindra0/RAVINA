@@ -8,6 +8,7 @@ import {
   Grid,
   Card,
   CardContent,
+  CardActions,
   Button,
   CircularProgress,
   Box,
@@ -18,7 +19,6 @@ import {
   CalendarMonth,
   AddCircleOutline,
   ArrowForward,
-  WaterDrop,
   WbSunny,
   Schedule,
   // 🚀 Ajout de l'icône de menu
@@ -27,6 +27,7 @@ import {
 
 import { dashboardStyles } from '../styles/Dashboard.styles'
 const WeatherCard = lazy(() => import('./WeatherCard'))
+const CreateUserPlantationModal = lazy(() => import('./CreateUserPlantationModal'))
 
 
 const getPlantImagePath = (imageSlug) => {
@@ -35,6 +36,8 @@ const getPlantImagePath = (imageSlug) => {
   }
   return `/images/plantes/${imageSlug}`
 }
+
+const DEFAULT_PLANT_IMAGE = '/images/plantes/default.jpg'
 
 
 export default function Dashboard() {
@@ -46,6 +49,8 @@ export default function Dashboard() {
   const [loadingData, setLoadingData] = useState(true)
   const [showAddModal, setShowAddModal] = useState(false)
   const [isSidebarMobileOpen, setIsSidebarMobileOpen] = useState(false) 
+  const [showCreatePlantationModal, setShowCreatePlantationModal] = useState(false)
+  const [selectedTemplateId, setSelectedTemplateId] = useState(null)
 
   const handleAddPlant = (newPlant) => {
     setPlants([...plants, newPlant])
@@ -103,6 +108,11 @@ export default function Dashboard() {
     } finally {
       setLoadingMore(false)
     }
+  }
+
+  const handleOpenCreatePlantation = (templateId) => {
+    setSelectedTemplateId(templateId || null)
+    setShowCreatePlantationModal(true)
   }
 
   if (!authStore.isAuthenticated()) {
@@ -189,7 +199,7 @@ export default function Dashboard() {
                             src={getPlantImagePath(plant.imageSlug)}
                             alt={plant.name}
                             loading="lazy"
-                            style={{ width: '220px', height: '100%', objectFit: 'cover', display: 'block' }}
+                            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_PLANT_IMAGE; }}
                           />
                         </Box>
                         <CardContent>
@@ -202,6 +212,24 @@ export default function Dashboard() {
                             </Box>
                           </Box>
                         </CardContent>
+                        <CardActions sx={dashboardStyles.cardActions}>
+                          <Button
+                            fullWidth
+                            size="medium"
+                            variant="contained"
+                            startIcon={<AddCircleOutline />}
+                            onClick={() => handleOpenCreatePlantation(plant.id)}
+                            sx={{ 
+                              textTransform: 'none', 
+                              fontWeight: 700, 
+                              backgroundColor: '#10b981', 
+                              '&:hover': { backgroundColor: '#059669' } 
+                            }}
+                            aria-label={`Planter ${plant.name}`}
+                          >
+                            Planter
+                          </Button>
+                        </CardActions>
                       </Card>
                     </Grid>
                   ))}
@@ -217,7 +245,7 @@ export default function Dashboard() {
             <Box sx={dashboardStyles.sectionContainer}>
               <Box sx={dashboardStyles.sectionHeader}>
                 <Typography variant="h5" sx={dashboardStyles.sectionTitle}>
-                  Mes plantations
+                  Inventaire & Collection
                 </Typography>
                 {!showAllPlants && plants.length >= 5 && (
                   <Button
@@ -245,7 +273,7 @@ export default function Dashboard() {
                             src={getPlantImagePath(plant.imageSlug)}
                             alt={plant.name}
                             loading="lazy"
-                            style={{ width: '220px', height: '100%', objectFit: 'cover', display: 'block' }}
+                            onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_PLANT_IMAGE; }}
                           />
                         </Box>
                         <CardContent>
@@ -260,22 +288,25 @@ export default function Dashboard() {
 
                           <Box sx={dashboardStyles.plantCardDetails}>
                             <Box sx={dashboardStyles.plantCardDetailItem}>
-                              <WaterDrop sx={{ fontSize: 18, color: '#3b82f6' }} />
+                              <WbSunny sx={{ fontSize: 18, color: '#fbbf24' }} />
                               <Typography variant="body2">
-                                {plant.wateringFrequency
-                                  ? Number(plant.wateringFrequency) === 1
-                                    ? 'Tous les jours'
-                                    : `Tous les ${plant.wateringFrequency} jours`
+                                Exposition : {plant.sunExposure || 'Non renseignée'}
+                              </Typography>
+                            </Box>
+                            <Box sx={dashboardStyles.plantCardDetailItem}>
+                              <Schedule sx={{ fontSize: 18, color: '#6b7280' }} />
+                              <Typography variant="body2">
+                                Récolte :{' '}
+                                {plant.expectedHarvestDays != null
+                                  ? `${plant.expectedHarvestDays} jours`
                                   : 'N/A'}
                               </Typography>
                             </Box>
                             <Box sx={dashboardStyles.plantCardDetailItem}>
-                              <WbSunny sx={{ fontSize: 18, color: '#fbbf24' }} />
-                              <Typography variant="body2">{plant.sunExposure || 'N/A'}</Typography>
-                            </Box>
-                            <Box sx={dashboardStyles.plantCardDetailItem}>
-                              <Schedule sx={{ fontSize: 18, color: '#6b7280' }} />
-                              <Typography variant="body2">Récolte: {plant.expectedHarvestDays}j</Typography>
+                              <CalendarMonth sx={{ fontSize: 18, color: '#34d399' }} />
+                              <Typography variant="body2">
+                                Saison idéale : {plant.bestSeason || 'N/A'}
+                              </Typography>
                             </Box>
                           </Box>
                         </CardContent>
@@ -306,6 +337,16 @@ export default function Dashboard() {
           open={showAddModal}
           onClose={() => setShowAddModal(false)}
           onPlantAdded={handleAddPlant}
+        />
+      </Suspense>
+
+      {/* Create Plantation Modal */}
+      <Suspense fallback={null}>
+        <CreateUserPlantationModal
+          open={showCreatePlantationModal}
+          onClose={() => setShowCreatePlantationModal(false)}
+          onCreated={() => setShowCreatePlantationModal(false)}
+          initialTemplateId={selectedTemplateId}
         />
       </Suspense>
     </Box>

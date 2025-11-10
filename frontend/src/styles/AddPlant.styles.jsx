@@ -59,33 +59,90 @@ export const addPlantStyles = {
         pb: 0.5,
     },
 
-    // 6. CONTENEUR PRINCIPAL D'INFORMATIONS (Espace augmenté)
-    generalInfoContainer: {
+    layout: {
         display: 'flex',
-        flexDirection: { xs: 'column', sm: 'row' },
-        alignItems: 'center',
-        gap: 4, // Plus d'espace entre l'image et les inputs
-        mb: 4,
-        mt: 3,
+        flexDirection: { xs: 'column', md: 'row' },
+        gap: { xs: 3, md: 4 },
     },
 
-    // 7. CONTENEUR D'ENTRÉES TEXTE (Reste structurel)
-    textInputStack: {
-        flexGrow: 1,
-        width: { xs: '100%', sm: 'auto' },
+    templatePanel: {
+        flexBasis: { md: '35%' },
+        flexShrink: 0,
+        backgroundColor: '#f9fafb',
+        borderRadius: 3,
+        border: '1px solid #e5e7eb',
+        p: { xs: 2.5, md: 3 },
         display: 'flex',
         flexDirection: 'column',
+        gap: 2.5,
+    },
+
+    panelSubtitle: {
+        fontWeight: 600,
+        color: '#1f2937',
+        textTransform: 'uppercase',
+        letterSpacing: '0.08em',
+        fontSize: '0.75rem',
+    },
+
+    templateCard: {
+        backgroundColor: 'white',
+        borderRadius: 2,
+        border: '1px solid #e5e7eb',
+        boxShadow: '0 10px 25px rgba(15, 23, 42, 0.06)',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+    },
+
+    templateImageWrapper: {
+        width: '100%',
+        aspectRatio: '4 / 3',
+        backgroundColor: '#eef2ff',
+        overflow: 'hidden',
+    },
+
+    templateInfo: {
+        p: 2.5,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1.5,
+    },
+
+    templateTitle: {
+        fontWeight: 700,
+        fontSize: '1rem',
+        color: PRIMARY_ACTION_COLOR,
+    },
+
+    templateMeta: {
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 1,
+    },
+
+    templateMetaRow: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         gap: 2,
     },
 
-    // 8. ACTION BUTTONS CONTAINER (Légèrement plus de padding pour l'esthétique)
-    actionButtonsContainer: {
-        mt: 4,
-        pt: 3,
-        borderTop: '1px solid #e5e7eb',
-        display: 'flex',
-        justifyContent: 'flex-end',
-        gap: 2,
+    templateMetaLabel: {
+        fontSize: '0.85rem',
+        color: '#6b7280',
+        fontWeight: 500,
+    },
+
+    templateMetaValue: {
+        fontSize: '0.9rem',
+        color: '#1f2937',
+        fontWeight: 600,
+        textAlign: 'right',
+    },
+
+    formSection: {
+        flex: 1,
     },
 
     // 9. SUBMIT BUTTON (Style plus plat et moderne)
@@ -124,6 +181,32 @@ export const addPlantStyles = {
         },
         '& .MuiInputLabel-root.Mui-focused': {
             color: PRIMARY_GREEN,
+        },
+    },
+
+    selectControl: {
+        width: '100%',
+        '& .MuiSelect-select, & .MuiSelect-select.MuiSelect-outlined, & .MuiSelect-select.MuiInputBase-input': {
+            width: 250,
+            minWidth: 250,
+            maxWidth: 250,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            boxSizing: 'border-box',
+            '@media (min-width: 900px)': {
+                width: 210,
+                minWidth: 210,
+                maxWidth: 210,
+            },
+        },
+    },
+
+    // Note field with same width behavior as selects
+    notesControl: {
+        width: 250,
+        '@media (min-width: 900px)': {
+            width: 210,
         },
     },
 

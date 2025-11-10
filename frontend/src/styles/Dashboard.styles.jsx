@@ -237,6 +237,17 @@ export const dashboardStyles = {
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: '12px 12px 0 0',
+    '@media (min-width:900px)': {
+      maxWidth: 220,
+      margin: '0 auto',
+    },
+    // Responsive image sizing: full width on small screens, constrained on md+
+    '& img': {
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      display: 'block',
+    },
   },
 
   plantCardTitle: {
@@ -295,6 +306,16 @@ export const dashboardStyles = {
       boxShadow: '0 20px 25px -5px rgba(16, 185, 129, 0.4)',
     },
     transition: 'all 0.3s ease',
+  },
+
+  // Ensure suggestion/plant cards action section has consistent padding and full-width button
+  cardActions: {
+    px: 2,
+    pb: 2,
+    pt: 0,
+    '& > *': {
+      width: '100%',
+    },
   },
 
   // --- Empty State ---
