@@ -8,10 +8,13 @@ import {
   Typography,
   Chip,
   Divider,
+  Button,
+  Alert,
 } from '@mui/material'
 import { Close, LocalFlorist, WaterDrop, LocationOn, Timeline } from '@mui/icons-material'
 import { useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
+import { api } from '../lib/axios'
 
 const getStatusColor = (status) => {
   const statusMap = {
@@ -34,6 +37,42 @@ const daysUntil = (dateString) => {
 }
 
 export default function PlantationDetailsModal({ open, onClose, plantation }) {
+  const [actionLoading, setActionLoading] = React.useState(false)
+  const [actionError, setActionError] = React.useState('')
+
+  const handleWater = async () => {
+    if (!plantation?.id) return
+    setActionLoading(true)
+    setActionError('')
+    try {
+      await api.post(`/plantations/${plantation.id}/water`, {}, {
+        headers: { Accept: 'application/ld+json' }
+      })
+      // On laisse le parent recharger la liste via onClose() + éventuel rafraîchissement
+      onClose?.()
+    } catch (e) {
+      setActionError("Impossible d'enregistrer l'arrosage.")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!plantation?.id) return
+    if (!confirm('Supprimer cette plantation ? Cette action est irréversible.')) return
+    setActionLoading(true)
+    setActionError('')
+    try {
+      await api.delete(`/plantations/${plantation.id}`, {
+        headers: { Accept: 'application/ld+json' }
+      })
+      onClose?.({ deletedId: plantation.id })
+    } catch (e) {
+      setActionError('Suppression impossible.')
+    } finally {
+      setActionLoading(false)
+    }
+  }
   const theme = useTheme()
   const isXs = useMediaQuery(theme.breakpoints.down('sm'))
 
@@ -94,6 +133,9 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
           overflowY: 'auto'
         }}
       >
+        {actionError && (
+          <Alert severity="error" sx={{ mb: 1 }}>{actionError}</Alert>
+        )}
         {/* Localisation */}
         <Box display="flex" alignItems="center" gap={1} mb={2}>
           <LocationOn sx={{ color: '#ef4444' }} />
@@ -191,6 +233,25 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
           )}
         </Box>
       </DialogContent>
+
+      <Box display="flex" justifyContent="space-between" alignItems="center" px={2} py={1.5}>
+        <Button
+          onClick={handleDelete}
+          color="error"
+          variant="outlined"
+          disabled={actionLoading}
+        >
+          Supprimer
+        </Button>
+        <Button
+          onClick={handleWater}
+          variant="contained"
+          disabled={actionLoading}
+          sx={{ backgroundColor: '#10b981', ':hover': { backgroundColor: '#059669' } }}
+        >
+          {actionLoading ? '...' : "J'ai arrosé"}
+        </Button>
+      </Box>
     </Dialog>
   )
 }

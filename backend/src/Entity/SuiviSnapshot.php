@@ -26,7 +26,7 @@ class SuiviSnapshot
     private ?int $id = null;
 
     #[ORM\ManyToOne(inversedBy: 'suiviSnapshots')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     #[Groups(['suivi_snapshot:read'])]
     private ?UserPlantation $userPlantation = null;
 

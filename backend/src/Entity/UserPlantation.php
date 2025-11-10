@@ -7,6 +7,11 @@ use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\Get;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
+use ApiPlatform\Metadata\Delete;
+use ApiPlatform\Metadata\Post as PostOp;
+use ApiPlatform\Metadata\Operation;
+use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
+use ApiPlatform\OpenApi\Model\RequestBody;
 use App\DataProcessor\UserPlantationProcessor;
 use App\Repository\UserPlantationRepository;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -34,6 +39,10 @@ use Symfony\Component\Validator\Constraints as Assert;
             uriTemplate: '/plantations',
             security: "is_granted('IS_AUTHENTICATED_FULLY')",
             processor: UserPlantationProcessor::class
+        ),
+        new Delete(
+            uriTemplate: '/plantations/{id}',
+            security: "object.getUser() == user"
         ),
     ]
 )]

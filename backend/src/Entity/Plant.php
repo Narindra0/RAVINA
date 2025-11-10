@@ -8,14 +8,11 @@ use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Post;
 use ApiPlatform\Metadata\Put;
 use ApiPlatform\Metadata\Delete;
-use ApiPlatform\Metadata\ApiProperty;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\HttpFoundation\File\File; 
 use App\Repository\PlantRepository;
-use App\ApiResource\SuggestionsOutput;
-use App\State\PlantSuggestionsProvider;
 use App\Entity\User; 
 
 #[ORM\Entity(repositoryClass: PlantRepository::class)]
@@ -26,8 +23,6 @@ use App\Entity\User;
     operations: [
         new Get(security: "object.getUser() == user"),
         new GetCollection(security: "is_granted('IS_AUTHENTICATED_FULLY')"),
-        
-        // ✅ CORRECTION APPORTÉE : Utilisation de inputFormats pour la compatibilité
         new Post(
             security: "is_granted('IS_AUTHENTICATED_FULLY')",
             inputFormats: ['json' => ['application/json'], 'multipart' => ['multipart/form-data']], 
@@ -35,16 +30,6 @@ use App\Entity\User;
         
         new Put(security: "object.getUser() == user"),
         new Delete(security: "object.getUser() == user"),
-        
-        new Get(
-            uriTemplate: '/plants/suggestions',
-            name: 'suggestions',
-            output: SuggestionsOutput::class,
-            normalizationContext: ['groups' => ['suggestions']], 
-            read: false,
-            provider: PlantSuggestionsProvider::class,
-            security: "is_granted('IS_AUTHENTICATED_FULLY')",
-        ),
     ]
 )]
 class Plant
@@ -101,12 +86,10 @@ class Plant
     #[Groups(['plant:read', 'plant:write'])]
     private ?string $sunExposure = null;
     
-    // PROPRIÉTÉ MAUPÉE: Nom du fichier enregistré en base de données
     #[ORM\Column(length: 150, nullable: true)]
     #[Groups(['plant:read', 'plant:write'])] 
     private ?string $imageSlug = null;
 
-    // PROPRIÉTÉ NON-MAPPÉE: Utilisée pour recevoir le fichier du formulaire (FormData)
     #[Assert\File(
         maxSize: '5M',
         mimeTypes: [
@@ -156,8 +139,6 @@ class Plant
     public function setPlantedAt(\DateTimeInterface $date): self { $this->plantedAt = $date; return $this; }
 
     public function getExpectedHarvestDays(): ?int { return $this->expectedHarvestDays; }
-    
-    // ✅ CORRECTION APPORTÉE : Code nettoyé pour éviter l'erreur de syntaxe
     public function setExpectedHarvestDays(int $days): self
     {
         $this->expectedHarvestDays = $days;
@@ -202,8 +183,6 @@ class Plant
         $this->sunExposure = $sunExposure;
         return $this;
     }
-    
-    // GETTER / SETTER POUR imageSlug (nom du fichier en BDD)
     public function getImageSlug(): ?string
     {
         return $this->imageSlug;
@@ -215,7 +194,6 @@ class Plant
         return $this;
     }
 
-    // GETTER / SETTER POUR imageFile (le fichier temporaire non-mappé)
     public function getImageFile(): ?File
     {
         return $this->imageFile;

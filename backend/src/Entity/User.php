@@ -56,7 +56,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      * @var Collection<int, UserPlantation>
      */
     #[ORM\OneToMany(mappedBy: 'user', targetEntity: UserPlantation::class, orphanRemoval: true)]
-    #[Groups(['user_plantation:read'])]
     private Collection $userPlantations;
 
     public function __construct()

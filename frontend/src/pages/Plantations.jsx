@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { api } from '../lib/axios';
 import Sidebar from './Sidebar';
-import { LocalFlorist, WaterDrop, LocationOn, Menu as MenuIcon } from '@mui/icons-material';
-import { IconButton, Box } from '@mui/material';
+import { LocalFlorist, WaterDrop, LocationOn, Menu as MenuIcon, AddCircleOutline } from '@mui/icons-material';
+import { IconButton, Box, Button } from '@mui/material';
 import '../styles/Plantations.styles.css';
 import PlantationDetailsModal from './PlantationDetailsModal';
+import CreateUserPlantationModal from './CreateUserPlantationModal';
 
 const getPlantImagePath = (imageSlug) => {
   if (!imageSlug) {
@@ -91,6 +92,7 @@ export default function Plantations() {
   const [error, setError] = useState(null);
   const [isSidebarMobileOpen, setIsSidebarMobileOpen] = useState(false);
   const [selectedPlantation, setSelectedPlantation] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
 
   const toggleSidebarMobile = () => {
     setIsSidebarMobileOpen((v) => !v);
@@ -105,6 +107,12 @@ export default function Plantations() {
     const t1 = new Date(target.getFullYear(), target.getMonth(), target.getDate());
     const diffMs = t1 - t0;
     return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
+  };
+
+  const handlePlantationAdded = (newPlantation) => {
+    if (!newPlantation) return;
+    setPlantations((prev) => [newPlantation, ...prev]);
+    setShowAddModal(false);
   };
 
   useEffect(() => {
@@ -130,6 +138,9 @@ export default function Plantations() {
       }
     }
     fetchPlantations();
+    // Expose for later refresh
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    window.__refreshPlantations = fetchPlantations;
   }, []);
 
   return (
@@ -157,7 +168,24 @@ export default function Plantations() {
       <Sidebar isMobileOpen={isSidebarMobileOpen} onClose={toggleSidebarMobile} />
       <main className="plantations-content">
         <header className="plantations-header">
-          <h1>Mes Plantations</h1>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <h1 style={{ margin: 0 }}>Mes Plantations</h1>
+            <Button
+              variant="contained"
+              startIcon={<AddCircleOutline />}
+              onClick={() => setShowAddModal(true)}
+              sx={{
+                backgroundColor: '#10b981',
+                ':hover': { backgroundColor: '#059669' },
+                borderRadius: '10px',
+                minWidth: { xs: 40, md: 120 },
+                px: { xs: 1.25, md: 2 },
+              }}
+            >
+              <span style={{ display: 'none' }} className="btn-text-xs">.</span>
+              <span className="btn-text-md" style={{ display: 'none' }}>Planter</span>
+            </Button>
+          </div>
         </header>
 
         {loading && (
@@ -279,8 +307,23 @@ export default function Plantations() {
 
       <PlantationDetailsModal
         open={!!selectedPlantation}
-        onClose={() => setSelectedPlantation(null)}
+        onClose={(result) => {
+          setSelectedPlantation(null);
+          if (result?.deletedId) {
+            setPlantations((prev) => prev.filter(p => p.id !== result.deletedId));
+            return;
+          }
+          if (typeof window.__refreshPlantations === 'function') {
+            window.__refreshPlantations();
+          }
+        }}
         plantation={selectedPlantation}
+      />
+
+      <CreateUserPlantationModal
+        open={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onCreated={handlePlantationAdded}
       />
     </div>
   );
