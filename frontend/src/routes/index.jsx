@@ -6,7 +6,7 @@ import { loginRoute } from './loginRoute'
 import { registerRoute } from './registerRoute'
 import { dashboardRoute } from './dashboardRoute'
 import { plantsRoute } from './plantsRoute'
-import { meteoRoute } from './meteoRoute' // ✅ ajouté ici
+import { meteoRoute } from './MeteoRoute' // ✅ ajouté ici
 import { plantationsRoute } from './plantationsRoute'
 
 const routeTree = rootRoute.addChildren([
