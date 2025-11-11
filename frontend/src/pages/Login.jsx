@@ -1,5 +1,4 @@
-// src/pages/Login.jsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { Box, Button, Typography, Avatar, CircularProgress, Fade, useMediaQuery, useTheme } from '@mui/material';
 import { Cloud } from '@mui/icons-material';
@@ -21,7 +20,7 @@ export default function LoginPage() {
     const { 
         email, password, setPassword, loading, emailError,
         handleEmailChange, handleEmailBlur, handleSubmit,
-        showPassword, setShowPassword,
+        showPassword, setShowPassword, showSnackbar,
         ...snackbarProps 
     } = useLoginForm();
 
@@ -41,6 +40,14 @@ export default function LoginPage() {
             text="Accédez à des prévisions météo hyper-locales et surveillez la santé de vos cultures en temps réel."
         />
     );
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('registered') === '1') {
+            showSnackbar('✅ Compte créé avec succès. Vous pouvez vous connecter.', 'success');
+            navigate({ to: '/login', replace: true });
+        }
+    }, [navigate, showSnackbar]);
 
     return (
         <AuthLayout visualSection={visual} snackbarProps={snackbarProps}>
