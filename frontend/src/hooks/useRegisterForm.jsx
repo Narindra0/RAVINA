@@ -13,7 +13,8 @@ export function useRegisterForm() {
     const { 
         email, password, loading, setLoading, 
         emailError, validateEmail, handleEmailChange,
-        showPassword, setShowPassword
+        showPassword, setShowPassword,
+        setPassword
     } = useAuthForm();
     const { showSnackbar, ...snackbarProps } = useSnackbar();
 
@@ -69,6 +70,7 @@ export function useRegisterForm() {
         showPassword, setShowPassword, 
         confirmPassword, setConfirmPassword, 
         showConfirmPassword, setShowConfirmPassword,
+        setPassword,
         ...snackbarProps,
     };
 }
