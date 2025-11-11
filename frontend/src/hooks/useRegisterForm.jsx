@@ -50,7 +50,7 @@ export function useRegisterForm() {
             showSnackbar('🎉 Compte créé avec succès ! Redirection en cours...', 'success');
             
             setTimeout(() => {
-                navigate({ to: '/login' });
+                navigate({ to: '/login?registered=1' });
             }, 2000);
             
         } catch (error) {
