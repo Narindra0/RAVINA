@@ -10,6 +10,7 @@ import { VisualSection } from '../components/auth/VisualSection';
 import { EmailField } from '../components/ui/EmailField';
 import { PasswordField } from '../components/ui/PasswordField';
 import { authStyles, PRIMARY_GREEN, ACCENT_ORANGE } from '../styles/authStyles';
+import logoImageSrc from '../assets/logo-texte.png';
 
 export default function RegisterPage() {
     const navigate = useNavigate();
@@ -41,10 +42,7 @@ export default function RegisterPage() {
     return (
         <AuthLayout visualSection={visual} snackbarProps={snackbarProps}>
             <Box sx={authStyles.header}>
-                <Typography variant={isSmallScreen ? "h5" : "h4"} sx={authStyles.mainTitle}>
-                    <span style={{ color: PRIMARY_GREEN }}>Orient</span>
-                    <span style={{ color: ACCENT_ORANGE }}>Mada</span>
-                </Typography>
+                <Box component="img" src={logoImageSrc} alt="OrientMada Logo" sx={authStyles.logoImage} />
                 <Fade in timeout={800}>
                     <Avatar 
                         sx={authStyles.avatar(isSmallScreen, isHovered)}
