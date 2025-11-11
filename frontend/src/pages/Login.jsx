@@ -66,7 +66,15 @@ export default function LoginPage() {
                 </Typography>
             </Box>
 
-            <Box component="form" onSubmit={handleSubmit}>
+            <Box
+                component="form"
+                onSubmit={handleSubmit}
+                onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                        handleSubmit(e);
+                    }
+                }}
+            >
                 <EmailField 
                     value={email} 
                     onChange={handleEmailChange} 
