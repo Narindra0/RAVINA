@@ -73,6 +73,6 @@ export function useLoginForm() {
         password, setPassword, // ✅ setPassword est inclus ici pour être utilisé dans le JSX
         loading, 
         emailError, handleEmailChange, handleEmailBlur, handleSubmit,
-        showPassword, setShowPassword, ...snackbarProps,
+        showPassword, setShowPassword, ...snackbarProps, showSnackbar,
     };
 }
