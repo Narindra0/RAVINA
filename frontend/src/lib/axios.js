@@ -1,18 +1,51 @@
 import axios from 'axios'
 import { authStore } from '../store/auth'
 
-// ATTENTION: C'est l'URL en DUR. Cela résout le problème du 'undefined'.
-const API_BASE_URL = "https://ravina-production.up.railway.app/index.php";
+// Configuration de l'URL de base de l'API
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ravina-production.up.railway.app'
 
+// Création de l'instance axios
 export const api = axios.create({
-  // L'URL de production est directement ici
-  baseURL: `${API_BASE_URL}/api`, 
+  baseURL: `${API_BASE_URL}/api`,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+  timeout: 10000, // Timeout de 10 secondes
 })
 
-api.interceptors.request.use((config) => {
-  const token = authStore.getToken()
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
+// Intercepteur pour les requêtes sortantes
+api.interceptors.request.use(
+  (config) => {
+    const token = authStore.getToken()
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
+
+// Intercepteur pour les réponses
+api.interceptors.response.use(
+  (response) => {
+    return response
+  },
+  (error) => {
+    // Gestion des erreurs d'authentification
+    if (error.response?.status === 401) {
+      authStore.clearToken()
+      // Rediriger vers la page de connexion si nécessaire
+      // window.location.href = '/login'
+    }
+    
+    // Gestion des erreurs serveur
+    if (error.response?.status >= 500) {
+      console.error('Erreur serveur:', error.response.data)
+    }
+    
+    return Promise.reject(error)
+  }
+)
