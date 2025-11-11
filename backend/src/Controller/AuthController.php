@@ -40,7 +40,7 @@ class AuthController extends AbstractController
 
         $user = $this->em->getRepository(User::class)->findOneBy(['email' => $data['email']]);
         if (!$user) {
-            return $this->json(['error' => 'Utilisateur non trouvé'], Response::HTTP_UNAUTHORIZED);
+            return $this->json(['error' => 'Utilisateur non trouvé'], Response::HTTP_NOT_FOUND);
         }
 
         if (!$this->passwordHasher->isPasswordValid($user, $data['password'])) {
