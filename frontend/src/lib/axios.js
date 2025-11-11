@@ -2,7 +2,7 @@ import axios from 'axios'
 import { authStore } from '../store/auth'
 
 // Configuration de l'URL de base de l'API
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ravina-production.up.railway.app'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ravina-production.up.railway.app/index.php'
 
 // Création de l'instance axios
 export const api = axios.create({
