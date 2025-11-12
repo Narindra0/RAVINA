@@ -29,18 +29,27 @@ class PlantSuggestionController extends AbstractController
         $cacheKey = 'plant_suggestions_user_' . $ownerId . '_' . $season;
         $cacheItem = $cache->getItem($cacheKey);
         if (!$cacheItem->isHit()) {
-            $sub = $plantTemplateRepository->createQueryBuilder('pt2')
+            $sub = $plantTemplateRepository->createQueryBuilder('pt2');
+            $subExpr = $sub->expr();
+            $sub = $sub
                 ->select('MAX(pt2.id)')
-                ->andWhere('pt2.bestSeason = :season')
-                ->andWhere('pt2.user = :owner')
+                ->andWhere($subExpr->eq('pt2.user', ':owner'))
+                ->andWhere($subExpr->orX(
+                    $subExpr->eq('pt2.bestSeason', ':season'),
+                    $subExpr->eq('pt2.bestSeason', ':allYear')
+                ))
                 ->groupBy('pt2.name');
 
             $qb = $plantTemplateRepository->createQueryBuilder('pt');
             $expr = $qb->expr();
-            $qb->andWhere('pt.bestSeason = :season')
-               ->andWhere('pt.user = :owner')
+            $qb->andWhere($expr->eq('pt.user', ':owner'))
+               ->andWhere($expr->orX(
+                   $expr->eq('pt.bestSeason', ':season'),
+                   $expr->eq('pt.bestSeason', ':allYear')
+               ))
                ->andWhere($expr->in('pt.id', $sub->getDQL()))
                ->setParameter('season', $season)
+               ->setParameter('allYear', "Toute l'année")
                ->setParameter('owner', $ownerId)
                ->add('orderBy', "CASE pt.type WHEN 'Fruit' THEN 1 WHEN 'Légume' THEN 2 WHEN 'Herbe' THEN 3 ELSE 4 END, pt.name ASC");
 
