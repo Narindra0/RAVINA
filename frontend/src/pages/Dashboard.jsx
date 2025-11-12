@@ -181,6 +181,14 @@ export default function Dashboard() {
     setDetailsPlant(null)
   }
 
+  const handlePlanterFromDetails = (templateId) => {
+    if (!templateId) return
+    handleCloseDetails()
+    setTimeout(() => {
+      handleOpenCreatePlantation(templateId)
+    }, 150)
+  }
+
   if (!authStore.isAuthenticated()) {
     window.location.href = '/login'
     return null
@@ -446,6 +454,7 @@ export default function Dashboard() {
           onClose={handleCloseDetails}
           plant={detailsPlant}
           loading={detailsLoading}
+          onPlanter={handlePlanterFromDetails}
         />
       </Suspense>
     </Box>
