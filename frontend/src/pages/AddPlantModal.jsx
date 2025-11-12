@@ -216,7 +216,9 @@ export default function AddPlantModal({ open, onClose, onPlantAdded }) {
                 fd.append('file', imageFile);
                 fd.append('name', formData.name || 'image');
                 const uploadRes = await api.post('/upload/plant-template-image', fd, {
-                    headers: { 'Accept': 'application/json' },
+                    headers: { 
+                        'Accept': 'application/json',
+                    },
                 });
                 imageSlug = uploadRes.data?.imageSlug || null;
             }

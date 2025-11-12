@@ -9,9 +9,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://ravina-production.
 export const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
   headers: {
-    'Content-Type': 'application/json',
-    // CORRECTION 406 : Remplacement de 'application/id+json' par 'application/json'
-    'Accept': 'application/json', 
+    'Accept': 'application/ld+json',
   },
   timeout: 10000, // Timeout de 10 secondes
 })
