@@ -8,6 +8,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
+use Doctrine\DBAL\Connection;
 
 class PlantSuggestionController extends AbstractController
 {
@@ -25,8 +26,51 @@ class PlantSuggestionController extends AbstractController
             in_array($month, [12, 1, 2], true) => 'Hiver',
             default => 'Printemps'
         };
+
+        $normalize = static function (?string $value): ?string {
+            if ($value === null) {
+                return null;
+            }
+            $value = str_replace(['’', '‘'], "'", $value);
+            $value = trim($value);
+            return mb_strtolower($value, 'UTF-8');
+        };
+
+        $seasonAliases = [
+            'printemps' => ['Printemps', 'printemps', 'Spring', 'spring'],
+            'été' => ['Été', 'Ete', 'été', 'ete', 'Summer', 'summer'],
+            'automne' => ['Automne', 'automne', 'Fall', 'fall'],
+            'hiver' => ['Hiver', 'hiver', 'Winter', 'winter'],
+            "toute l'année" => [
+                "Toute l'année",
+                "Toute l’annee",
+                "toute l'année",
+                "toute l’annee",
+                "toute l'annee",
+                "toute lannee",
+                'all year',
+                'année entière',
+                'annee entiere',
+                'annuel',
+            ],
+        ];
+
+        $normalizedAliases = [];
+        foreach ($seasonAliases as $key => $values) {
+            $normalizedKey = $normalize($key);
+            $normalizedValues = array_filter(array_map(static function (string $value) use ($normalize) {
+                return $normalize($value);
+            }, $values));
+            $normalizedAliases[$normalizedKey] = array_values(array_unique($normalizedValues));
+        }
+
+        $seasonKey = $normalize($season) ?? 'printemps';
+        $allYearKey = $normalize("Toute l'année");
+
+        $seasonLabels = $normalizedAliases[$seasonKey] ?? [$seasonKey];
+        $allYearLabels = $normalizedAliases[$allYearKey] ?? [$allYearKey];
         // Cache + déduplication par nom pour la saison
-        $cacheKey = 'plant_suggestions_user_' . $ownerId . '_' . $season;
+        $cacheKey = 'plant_suggestions_user_' . $ownerId . '_' . $seasonKey;
         $cacheItem = $cache->getItem($cacheKey);
         if (!$cacheItem->isHit()) {
             $sub = $plantTemplateRepository->createQueryBuilder('pt2');
@@ -34,23 +78,30 @@ class PlantSuggestionController extends AbstractController
             $sub = $sub
                 ->select('MAX(pt2.id)')
                 ->andWhere($subExpr->eq('pt2.user', ':owner'))
-                ->andWhere($subExpr->orX(
-                    $subExpr->eq('pt2.bestSeason', ':season'),
-                    $subExpr->eq('pt2.bestSeason', ':allYear')
-                ))
-                ->groupBy('pt2.name');
+                ->andWhere(
+                    $subExpr->orX(
+                        $subExpr->in('LOWER(pt2.bestSeason)', ':seasonLabels'),
+                        $subExpr->in('LOWER(pt2.bestSeason)', ':allYearLabels')
+                    )
+                )
+                ->groupBy('pt2.name')
+                ->setParameter('owner', $ownerId)
+                ->setParameter('seasonLabels', $seasonLabels, Connection::PARAM_STR_ARRAY)
+                ->setParameter('allYearLabels', $allYearLabels, Connection::PARAM_STR_ARRAY);
 
             $qb = $plantTemplateRepository->createQueryBuilder('pt');
             $expr = $qb->expr();
             $qb->andWhere($expr->eq('pt.user', ':owner'))
-               ->andWhere($expr->orX(
-                   $expr->eq('pt.bestSeason', ':season'),
-                   $expr->eq('pt.bestSeason', ':allYear')
-               ))
+               ->andWhere(
+                   $expr->orX(
+                       $expr->in('LOWER(pt.bestSeason)', ':seasonLabels'),
+                       $expr->in('LOWER(pt.bestSeason)', ':allYearLabels')
+                   )
+               )
                ->andWhere($expr->in('pt.id', $sub->getDQL()))
-               ->setParameter('season', $season)
-               ->setParameter('allYear', "Toute l'année")
                ->setParameter('owner', $ownerId)
+               ->setParameter('seasonLabels', $seasonLabels, Connection::PARAM_STR_ARRAY)
+               ->setParameter('allYearLabels', $allYearLabels, Connection::PARAM_STR_ARRAY)
                ->add('orderBy', "CASE pt.type WHEN 'Fruit' THEN 1 WHEN 'Légume' THEN 2 WHEN 'Herbe' THEN 3 ELSE 4 END, pt.name ASC");
 
             $plantTemplates = $qb->getQuery()->getResult();

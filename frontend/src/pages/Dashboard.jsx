@@ -23,11 +23,13 @@ import {
   Schedule,
   // 🚀 Ajout de l'icône de menu
   Menu as MenuIcon,
+  InfoOutlined,
 } from '@mui/icons-material'
 
 import { dashboardStyles } from '../styles/Dashboard.styles'
 const WeatherCard = lazy(() => import('./WeatherCard'))
 const CreateUserPlantationModal = lazy(() => import('./CreateUserPlantationModal'))
+const PlantTemplateDetailsModal = lazy(() => import('../components/PlantTemplateDetailsModal'))
 
 
 const getPlantImagePath = (imageSlug) => {
@@ -42,6 +44,38 @@ const getPlantImagePath = (imageSlug) => {
 
 const DEFAULT_PLANT_IMAGE = '/images/plantes/default.jpg'
 
+const normalizePlantTemplate = (item) => {
+  if (!item) return null
+
+  const extractId = () => {
+    if (item.id != null) return item.id
+    const hydraId = item['@id']
+    if (typeof hydraId === 'string') {
+      const parts = hydraId.split('/')
+      const last = parts.pop()
+      const parsed = parseInt(last, 10)
+      return Number.isNaN(parsed) ? null : parsed
+    }
+    return null
+  }
+
+  return {
+    id: extractId(),
+    name: item.name ?? '',
+    type: item.type ?? '',
+    bestSeason: item.bestSeason ?? '',
+    imageSlug: item.imageSlug ?? null,
+    sunExposure: item.sunExposure ?? '',
+    wateringFrequency: item.wateringFrequency ?? '',
+    wateringQuantityMl: item.wateringQuantityMl ?? null,
+    expectedHarvestDays: item.expectedHarvestDays ?? null,
+    notes: item.notes ?? '',
+    location: item.location ?? '',
+    description: item.description ?? item.notes ?? '',
+    cyclePhasesJson: Array.isArray(item.cyclePhasesJson) ? item.cyclePhasesJson : [],
+  }
+}
+
 
 export default function Dashboard() {
   const [user, setUser] = useState(null)
@@ -54,6 +88,9 @@ export default function Dashboard() {
   const [isSidebarMobileOpen, setIsSidebarMobileOpen] = useState(false) 
   const [showCreatePlantationModal, setShowCreatePlantationModal] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState(null)
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false)
+  const [detailsLoading, setDetailsLoading] = useState(false)
+  const [detailsPlant, setDetailsPlant] = useState(null)
 
   const handleAddPlant = (newPlant) => {
     setPlants([...plants, newPlant])
@@ -81,7 +118,7 @@ export default function Dashboard() {
       if (plantsRes.status === 'fulfilled') {
         const data = plantsRes.value.data
         const templateData = Array.isArray(data) ? data : (data['member'] || data['hydra:member'] || [])
-        setPlants(templateData)
+        setPlants(templateData.map(normalizePlantTemplate))
       } else {
         console.error('Erreur lors du chargement des plantes', plantsRes.reason)
       }
@@ -104,7 +141,7 @@ export default function Dashboard() {
       const res = await api.get('/plant_templates')
       const data = res.data
       const templateData = Array.isArray(data) ? data : (data['member'] || data['hydra:member'] || [])
-      setPlants(templateData)
+      setPlants(templateData.map(normalizePlantTemplate))
       setShowAllPlants(true)
     } catch (err) {
       console.error('Erreur lors du chargement de toutes les plantes', err)
@@ -116,6 +153,32 @@ export default function Dashboard() {
   const handleOpenCreatePlantation = (templateId) => {
     setSelectedTemplateId(templateId || null)
     setShowCreatePlantationModal(true)
+  }
+
+  const handleOpenDetails = async (templateId, fallbackPlant = null) => {
+    if (!templateId && !fallbackPlant) return
+    setIsDetailsModalOpen(true)
+    setDetailsLoading(true)
+
+    if (fallbackPlant) {
+      setDetailsPlant(normalizePlantTemplate(fallbackPlant))
+    }
+
+    try {
+      if (templateId) {
+        const res = await api.get(`/plant_templates/${templateId}`)
+        setDetailsPlant(normalizePlantTemplate(res.data))
+      }
+    } catch (err) {
+      console.error('Erreur lors du chargement des détails de la plante', err)
+    } finally {
+      setDetailsLoading(false)
+    }
+  }
+
+  const handleCloseDetails = () => {
+    setIsDetailsModalOpen(false)
+    setDetailsPlant(null)
   }
 
   if (!authStore.isAuthenticated()) {
@@ -216,22 +279,35 @@ export default function Dashboard() {
                           </Box>
                         </CardContent>
                         <CardActions sx={dashboardStyles.cardActions}>
-                          <Button
-                            fullWidth
-                            size="medium"
-                            variant="contained"
-                            startIcon={<AddCircleOutline />}
-                            onClick={() => handleOpenCreatePlantation(plant.id)}
-                            sx={{ 
-                              textTransform: 'none', 
-                              fontWeight: 700, 
-                              backgroundColor: '#10b981', 
-                              '&:hover': { backgroundColor: '#059669' } 
-                            }}
-                            aria-label={`Planter ${plant.name}`}
-                          >
-                            Planter
-                          </Button>
+                          <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
+                            <Button
+                              fullWidth
+                              size="medium"
+                              variant="outlined"
+                              startIcon={<InfoOutlined />}
+                              onClick={() => handleOpenDetails(plant.id, plant)}
+                              sx={{ textTransform: 'none', fontWeight: 600 }}
+                              aria-label={`Voir les détails de ${plant.name}`}
+                            >
+                              Détails
+                            </Button>
+                            <Button
+                              fullWidth
+                              size="medium"
+                              variant="contained"
+                              startIcon={<AddCircleOutline />}
+                              onClick={() => handleOpenCreatePlantation(plant.id)}
+                              sx={{ 
+                                textTransform: 'none', 
+                                fontWeight: 700, 
+                                backgroundColor: '#10b981', 
+                                '&:hover': { backgroundColor: '#059669' } 
+                              }}
+                              aria-label={`Planter ${plant.name}`}
+                            >
+                              Planter
+                            </Button>
+                          </Box>
                         </CardActions>
                       </Card>
                     </Grid>
@@ -313,6 +389,18 @@ export default function Dashboard() {
                             </Box>
                           </Box>
                         </CardContent>
+                      <CardActions sx={dashboardStyles.cardActions}>
+                        <Button
+                          fullWidth
+                          variant="outlined"
+                          startIcon={<InfoOutlined />}
+                          onClick={() => handleOpenDetails(plant.id, plant)}
+                          sx={{ textTransform: 'none', fontWeight: 600 }}
+                          aria-label={`Voir les détails de ${plant.name}`}
+                        >
+                          Voir les détails
+                        </Button>
+                      </CardActions>
                       </Card>
                     </Grid>
                   ))}
@@ -350,6 +438,14 @@ export default function Dashboard() {
           onClose={() => setShowCreatePlantationModal(false)}
           onCreated={() => setShowCreatePlantationModal(false)}
           initialTemplateId={selectedTemplateId}
+        />
+      </Suspense>
+      <Suspense fallback={null}>
+        <PlantTemplateDetailsModal
+          open={isDetailsModalOpen}
+          onClose={handleCloseDetails}
+          plant={detailsPlant}
+          loading={detailsLoading}
         />
       </Suspense>
     </Box>
