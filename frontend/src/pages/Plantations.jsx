@@ -11,6 +11,9 @@ const getPlantImagePath = (imageSlug) => {
   if (!imageSlug) {
     return '/images/plantes/default.jpg';
   }
+  if (typeof imageSlug === 'string' && imageSlug.startsWith('http')) {
+    return imageSlug;
+  }
   return `/images/plantes/${imageSlug}`;
 };
 

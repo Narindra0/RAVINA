@@ -2,6 +2,8 @@
 
 namespace App\Controller;
 
+use Cloudinary\Cloudinary;
+use Cloudinary\Api\Exception\ApiError;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,42 +22,60 @@ class UploadController extends AbstractController
             return new JsonResponse(['error' => 'File is required'], Response::HTTP_BAD_REQUEST);
         }
 
-        // Compute target directory: frontend/public/images/plantes (relative to backend project)
-        $projectDir = $this->getParameter('kernel.project_dir');
-        $targetDir = $projectDir . '/../frontend/public/images/plantes';
-        if (!is_dir($targetDir)) {
-            @mkdir($targetDir, 0775, true);
+        $cloudName = $_ENV['CLOUDINARY_CLOUD_NAME'] ?? null;
+        $apiKey = $_ENV['CLOUDINARY_API_KEY'] ?? null;
+        $apiSecret = $_ENV['CLOUDINARY_API_SECRET'] ?? null;
+
+        if (!$cloudName || !$apiKey || !$apiSecret) {
+            return new JsonResponse([
+                'error' => 'Cloudinary configuration is missing. Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET.',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
 
-        // Build filename based on provided name or original name (without extension), keep original extension
-        $base = trim($rawName) !== '' ? $rawName : pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
-        // Normalize filename: remove unsafe chars, keep spaces/hyphens/underscores, then convert spaces to hyphens
-        $base = preg_replace('/[^A-Za-z0-9\- _]/', '', $base);
-        $base = str_replace(['  ', ' '], [' ', '-'], $base);
-        $base = str_replace('__', '_', str_replace('--', '-', $base));
-        if ($base === '' ) {
-            $base = 'image';
-        }
-        // Determine extension from client mime or original name
-        $clientMime = (string) $file->getClientMimeType();
-        $ext = strtolower(pathinfo($file->getClientOriginalName(), PATHINFO_EXTENSION) ?: 'jpg');
-        if ($ext === 'jpeg') { $ext = 'jpg'; }
-        if (!$ext) {
-            if (str_contains($clientMime, 'png')) $ext = 'png';
-            elseif (str_contains($clientMime, 'webp')) $ext = 'webp';
-            else $ext = 'jpg';
+        $publicIdBase = trim($rawName) !== '' ? $rawName : pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        $publicIdBase = preg_replace('/[^A-Za-z0-9\\- _]/', '', $publicIdBase);
+        $publicIdBase = str_replace(['  ', ' '], [' ', '-'], $publicIdBase);
+        if ($publicIdBase === '') {
+            $publicIdBase = 'plant-template';
         }
 
-        $targetFilename = $base . '.' . $ext;
-        $targetPath = $targetDir . DIRECTORY_SEPARATOR . $targetFilename;
+        $folder = $_ENV['CLOUDINARY_UPLOAD_FOLDER'] ?? 'ravina/plants';
 
-        // Move uploaded file directly to target (overwrite if exists)
-        $tempPath = $targetDir . DIRECTORY_SEPARATOR . uniqid('upl_', true) . '.' . $ext;
-        $file->move($targetDir, basename($tempPath));
-        // Rename temp to final name (atomic move)
-        @rename($tempPath, $targetPath);
+        try {
+            $cloudinary = new Cloudinary([
+                'cloud' => [
+                    'cloud_name' => $cloudName,
+                    'api_key' => $apiKey,
+                    'api_secret' => $apiSecret,
+                ],
+            ]);
 
-        return new JsonResponse(['imageSlug' => $targetFilename], Response::HTTP_CREATED);
+            $result = $cloudinary->uploadApi()->upload(
+                $file->getPathname(),
+                [
+                    'folder' => $folder,
+                    'public_id' => $publicIdBase,
+                    'overwrite' => true,
+                    'resource_type' => 'image',
+                ]
+            );
+        } catch (ApiError $e) {
+            return new JsonResponse([
+                'error' => 'Cloudinary upload failed: ' . $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        } catch (\Throwable $e) {
+            return new JsonResponse([
+                'error' => 'Unexpected error during upload: ' . $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+
+        $secureUrl = $result['secure_url'] ?? null;
+        $publicId = $result['public_id'] ?? $publicIdBase;
+
+        return new JsonResponse([
+            'imageSlug' => $secureUrl ?? $result['url'] ?? null,
+            'publicId' => $publicId,
+        ], Response::HTTP_CREATED);
     }
 }
 
