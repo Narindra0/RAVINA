@@ -44,11 +44,20 @@ class PlantSuggestionController extends AbstractController
                ->add('orderBy', "CASE pt.type WHEN 'Fruit' THEN 1 WHEN 'Légume' THEN 2 WHEN 'Herbe' THEN 3 ELSE 4 END, pt.name ASC");
 
             $plantTemplates = $qb->getQuery()->getResult();
-            $cacheItem->set($plantTemplates);
+            $suggestions = array_map(fn(PlantTemplate $plantTemplate) => [
+                'id' => $plantTemplate->getId(),
+                'name' => $plantTemplate->getName(),
+                'type' => $plantTemplate->getType(),
+                'bestSeason' => $plantTemplate->getBestSeason(),
+                'wateringFrequency' => $plantTemplate->getWateringFrequency(),
+                'sunExposure' => $plantTemplate->getSunExposure(),
+                'imageSlug' => $plantTemplate->getImageSlug(),
+            ], $plantTemplates);
+            $cacheItem->set($suggestions);
             $cacheItem->expiresAfter(300);
             $cache->save($cacheItem);
         } else {
-            $plantTemplates = $cacheItem->get();
+            $suggestions = $cacheItem->get();
         }
         
         $monthNames = [
@@ -60,15 +69,7 @@ class PlantSuggestionController extends AbstractController
         $data = [
             'currentMonth' => $monthNames[$month] ?? 'Inconnu',
             'currentSeason' => $season,
-            'suggestions' => array_map(fn(PlantTemplate $plantTemplate) => [
-                'id' => $plantTemplate->getId(),
-                'name' => $plantTemplate->getName(),
-                'type' => $plantTemplate->getType(),
-                'bestSeason' => $plantTemplate->getBestSeason(),
-                'wateringFrequency' => $plantTemplate->getWateringFrequency(),
-                'sunExposure' => $plantTemplate->getSunExposure(),
-                'imageSlug' => $plantTemplate->getImageSlug(),
-            ], $plantTemplates),
+            'suggestions' => $suggestions ?? [],
         ];
         
         return $this->json($data);
