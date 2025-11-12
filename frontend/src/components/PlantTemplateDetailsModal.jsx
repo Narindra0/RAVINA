@@ -20,20 +20,15 @@ import CloseIcon from '@mui/icons-material/Close'
 import WaterDropIcon from '@mui/icons-material/WaterDrop'
 import WbSunnyIcon from '@mui/icons-material/WbSunny'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
+import LocalFloristIcon from '@mui/icons-material/LocalFlorist'
+import PlaceOutlinedIcon from '@mui/icons-material/PlaceOutlined'
 import { styled, useTheme } from '@mui/material/styles'
 
-const HeroWrapper = styled(Box)(({ theme }) => ({
+const HeroWrapper = styled(Box)(() => ({
   position: 'relative',
-  borderRadius: 20,
+  borderRadius: 24,
   overflow: 'hidden',
-  boxShadow: '0 18px 45px rgba(15, 118, 110, 0.25)',
-  '&::after': {
-    content: '""',
-    position: 'absolute',
-    inset: 0,
-    background: 'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.35) 100%)',
-    pointerEvents: 'none',
-  },
+  boxShadow: '0 30px 60px rgba(15, 118, 110, 0.25)',
 }))
 
 const HeroImage = styled('img')(() => ({
@@ -44,6 +39,30 @@ const HeroImage = styled('img')(() => ({
   transition: 'transform 0.4s ease',
   '&:hover': {
     transform: 'scale(1.01)',
+  },
+}))
+
+const TagContainer = styled(Stack)(({ theme }) => ({
+  marginTop: theme.spacing(2),
+  gap: theme.spacing(1),
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  [theme.breakpoints.down('sm')]: {
+    marginTop: theme.spacing(1.5),
+  },
+}))
+
+const TagChip = styled(Chip)(({ theme }) => ({
+  background: theme.palette.mode === 'dark'
+    ? 'rgba(16, 185, 129, 0.16)'
+    : 'rgba(16, 185, 129, 0.12)',
+  color: theme.palette.mode === 'dark' ? '#bbf7d0' : '#047857',
+  fontWeight: 600,
+  letterSpacing: 0.3,
+  textTransform: 'none',
+  borderRadius: 999,
+  '& .MuiChip-icon': {
+    color: 'inherit',
   },
 }))
 
@@ -130,8 +149,8 @@ export default function PlantTemplateDetailsModal({
           borderRadius: fullScreen ? 0 : 5,
           minHeight: fullScreen ? '100%' : 'auto',
           background: theme.palette.mode === 'dark'
-            ? 'linear-gradient(180deg, #0f172a 0%, #111827 100%)'
-            : 'linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%)',
+            ? 'linear-gradient(160deg, #0f172a 0%, #0b1120 75%, #0f172a 100%)'
+            : 'linear-gradient(160deg, #ffffff 0%, #ecfdf5 75%, #f0fdf4 100%)',
           display: 'flex',
           flexDirection: 'column',
         },
@@ -177,36 +196,29 @@ export default function PlantTemplateDetailsModal({
             <Grid item xs={12} md={5}>
               <HeroWrapper>
                 <HeroImage src={heroSrc} alt={plant?.name || 'Plant illustration'} loading="lazy" />
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  flexWrap="wrap"
-                  sx={{
-                    position: 'absolute',
-                    left: 16,
-                    bottom: 16,
-                    zIndex: 2,
-                  }}
-                >
-                  <Chip
-                    icon={<CalendarMonthIcon />}
-                    label={plant?.bestSeason || 'Saison inconnue'}
-                    color="success"
-                    sx={{ bgcolor: 'rgba(16, 185, 129, 0.2)', color: '#064e3b' }}
-                  />
-                  <Chip
-                    icon={<WbSunnyIcon />}
-                    label={plant?.sunExposure || 'Exposition ?'}
-                    sx={{ bgcolor: 'rgba(251, 191, 36, 0.25)', color: '#92400e' }}
-                  />
-                  {plant?.type ? (
-                    <Chip
-                      label={plant.type}
-                      sx={{ bgcolor: 'rgba(59, 130, 246, 0.2)', color: '#1d4ed8' }}
-                    />
-                  ) : null}
-                </Stack>
               </HeroWrapper>
+              <TagContainer direction="row">
+                {plant?.type ? (
+                  <TagChip
+                    icon={<LocalFloristIcon fontSize="small" />}
+                    label={plant.type}
+                  />
+                ) : null}
+                <TagChip
+                  icon={<CalendarMonthIcon fontSize="small" />}
+                  label={plant?.bestSeason || 'Saison inconnue'}
+                />
+                <TagChip
+                  icon={<WbSunnyIcon fontSize="small" />}
+                  label={plant?.sunExposure || 'Exposition ?'}
+                />
+                {plant?.location ? (
+                  <TagChip
+                    icon={<PlaceOutlinedIcon fontSize="small" />}
+                    label={`Emplacement : ${plant.location}`}
+                  />
+                ) : null}
+              </TagContainer>
             </Grid>
             <Grid item xs={12} md={7}>
               <Stack spacing={3}>
@@ -219,15 +231,6 @@ export default function PlantTemplateDetailsModal({
                       plant?.notes?.trim() ||
                       "Cette plante n'a pas encore de description. Ajoutez vos conseils d'entretien, vos astuces ou les conditions idéales pour la cultiver."}
                   </Typography>
-                  {plant?.location ? (
-                    <Typography
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mt: 1.5 }}
-                    >
-                      <strong>Emplacement conseillé :</strong> {plant.location}
-                    </Typography>
-                  ) : null}
                 </Box>
 
                 <Divider flexItem sx={{ opacity: 0.4 }} />

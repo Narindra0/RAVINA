@@ -267,8 +267,8 @@ export default function Dashboard() {
                 <Grid container spacing={1.5}>
                   {suggestions.suggestions.map((plant) => (
                     <Grid item xs={12} sm={6} md={3} key={plant.id}>
-                      <Card sx={dashboardStyles.plantCard}>
-                        <Box sx={dashboardStyles.plantCardImage}>
+                      <Card sx={dashboardStyles.suggestionCard}>
+                        <Box sx={dashboardStyles.suggestionCardImage}>
                           <img
                             src={getPlantImagePath(plant.imageSlug)}
                             alt={plant.name}
@@ -276,13 +276,20 @@ export default function Dashboard() {
                             onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_PLANT_IMAGE; }}
                           />
                         </Box>
-                        <CardContent>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="h6" sx={dashboardStyles.plantCardTitle}>
+                        <CardContent sx={dashboardStyles.suggestionCardContent}>
+                          <Box>
+                            <Typography component="h3" sx={dashboardStyles.suggestionCardTitle}>
                               {plant.name}
                             </Typography>
-                            <Box sx={dashboardStyles.plantCardBadge}>
-                              {plant.type}
+                            <Box sx={dashboardStyles.suggestionCardMeta}>
+                              {plant.type ? (
+                                <Box sx={dashboardStyles.suggestionCardBadge}>{plant.type}</Box>
+                              ) : null}
+                              {plant.bestSeason ? (
+                                <Typography variant="caption" color="text.secondary">
+                                  Saison idéale : {plant.bestSeason}
+                                </Typography>
+                              ) : null}
                             </Box>
                           </Box>
                         </CardContent>

@@ -176,44 +176,72 @@ export const dashboardStyles = {
     border: '1px solid #e5e7eb',
     backgroundColor: 'white',
     transition: 'all 0.3s ease',
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100%',
+    minHeight: 320,
+    boxShadow: '0 10px 30px rgba(17, 24, 39, 0.04)',
     '&:hover': {
-      boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-      transform: 'translateY(-4px)',
+      boxShadow: '0 24px 35px -12px rgba(15, 118, 110, 0.25)',
+      transform: 'translateY(-6px)',
     },
   },
 
   suggestionCardImage: {
+    position: 'relative',
     width: '100%',
-    aspectRatio: '5 / 4',
+    paddingTop: '62%',
     overflow: 'hidden',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f0fdf4',
+    borderRadius: '16px 16px 0 0',
+    '& img': {
+      position: 'absolute',
+      inset: 0,
+      width: '100%',
+      height: '100%',
+      objectFit: 'cover',
+      transition: 'transform 0.4s ease',
+    },
+    '&:hover img': {
+      transform: 'scale(1.05)',
+    },
+  },
+
+  suggestionCardContent: {
+    flexGrow: 1,
     display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '12px 12px 0 0',
+    flexDirection: 'column',
+    justifyContent: 'space-between',
+    gap: 2,
+    p: 3,
   },
 
   suggestionCardTitle: {
-    fontWeight: 600,
-    color: '#111827',
-    mb: 1,
+    fontWeight: 700,
+    color: '#0f172a',
+    fontSize: '1.2rem',
+    lineHeight: 1.25,
   },
 
-  suggestionCardType: {
-    color: '#6b7280',
-    mb: 2,
-    fontSize: '0.875rem',
-  },
-
-  suggestionCardInfo: {
+  suggestionCardMeta: {
     display: 'flex',
     alignItems: 'center',
     gap: 1,
+    flexWrap: 'wrap',
   },
 
-  suggestionCardInfoText: {
-    color: '#6b7280',
-    fontSize: '0.875rem',
+  suggestionCardBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 0.75,
+    padding: '0.25rem 0.75rem',
+    borderRadius: 999,
+    backgroundColor: 'rgba(16, 185, 129, 0.12)',
+    color: '#047857',
+    fontWeight: 600,
+    fontSize: '0.75rem',
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
 
   // --- Plant Cards ---
