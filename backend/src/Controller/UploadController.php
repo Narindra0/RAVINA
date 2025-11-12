@@ -41,6 +41,12 @@ class UploadController extends AbstractController
 
         $folder = $_ENV['CLOUDINARY_UPLOAD_FOLDER'] ?? 'ravina/plants';
 
+        $tempDir = sys_get_temp_dir();
+        $extension = $file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg';
+        $tempFilename = uniqid('cloudinary_', true) . '.' . $extension;
+        $tempFile = $file->move($tempDir, $tempFilename);
+        $uploadedFilePath = $tempFile->getPathname();
+
         try {
             $cloudinary = new Cloudinary([
                 'cloud' => [
@@ -51,7 +57,7 @@ class UploadController extends AbstractController
             ]);
 
             $result = $cloudinary->uploadApi()->upload(
-                $file->getPathname(),
+                $uploadedFilePath,
                 [
                     'folder' => $folder,
                     'public_id' => $publicIdBase,
@@ -60,14 +66,18 @@ class UploadController extends AbstractController
                 ]
             );
         } catch (ApiError $e) {
+            @unlink($uploadedFilePath);
             return new JsonResponse([
                 'error' => 'Cloudinary upload failed: ' . $e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         } catch (\Throwable $e) {
+            @unlink($uploadedFilePath);
             return new JsonResponse([
                 'error' => 'Unexpected error during upload: ' . $e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+
+        @unlink($uploadedFilePath);
 
         $secureUrl = $result['secure_url'] ?? null;
         $publicId = $result['public_id'] ?? $publicIdBase;
