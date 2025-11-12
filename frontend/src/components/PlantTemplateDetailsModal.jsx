@@ -22,26 +22,26 @@ import WbSunnyIcon from '@mui/icons-material/WbSunny'
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth'
 import { styled, useTheme } from '@mui/material/styles'
 
-const HeroImage = styled('div')(({ src }) => ({
+const HeroWrapper = styled(Box)(({ theme }) => ({
   position: 'relative',
-  width: '100%',
-  paddingTop: '60%',
   borderRadius: 20,
   overflow: 'hidden',
-  backgroundColor: '#f5f5f5',
-  backgroundImage: src ? `url(${src})` : 'none',
-  backgroundSize: 'cover',
-  backgroundPosition: 'center',
   boxShadow: '0 18px 45px rgba(15, 118, 110, 0.25)',
-  transition: 'transform 0.4s ease',
   '&::after': {
     content: '""',
     position: 'absolute',
     inset: 0,
     background: 'linear-gradient(180deg, rgba(0,0,0,0) 40%, rgba(0,0,0,0.35) 100%)',
-    opacity: src ? 1 : 0,
-    transition: 'opacity 0.3s ease',
+    pointerEvents: 'none',
   },
+}))
+
+const HeroImage = styled('img')(() => ({
+  width: '100%',
+  display: 'block',
+  aspectRatio: '4 / 3',
+  objectFit: 'cover',
+  transition: 'transform 0.4s ease',
   '&:hover': {
     transform: 'scale(1.01)',
   },
@@ -175,16 +175,16 @@ export default function PlantTemplateDetailsModal({
         ) : (
           <Grid container spacing={4} alignItems="stretch">
             <Grid item xs={12} md={5}>
-              <Box sx={{ position: 'relative' }}>
-                <HeroImage src={heroSrc} />
+              <HeroWrapper>
+                <HeroImage src={heroSrc} alt={plant?.name || 'Plant illustration'} loading="lazy" />
                 <Stack
                   direction="row"
                   spacing={1}
                   flexWrap="wrap"
                   sx={{
                     position: 'absolute',
-                    left: 12,
-                    bottom: 12,
+                    left: 16,
+                    bottom: 16,
                     zIndex: 2,
                   }}
                 >
@@ -206,7 +206,7 @@ export default function PlantTemplateDetailsModal({
                     />
                   ) : null}
                 </Stack>
-              </Box>
+              </HeroWrapper>
             </Grid>
             <Grid item xs={12} md={7}>
               <Stack spacing={3}>

@@ -16,16 +16,6 @@ class PlantSuggestionController extends AbstractController
     public function suggestions(Request $request, PlantTemplateRepository $plantTemplateRepository, CacheItemPoolInterface $cache): JsonResponse
     {
         $month = (int) $request->query->get('month', date('n'));
-        $owner = $this->getUser();
-        $fallbackOwnerId = (int)($_ENV['SUGGESTION_OWNER_ID'] ?? 1);
-        $eligibleOwnerIds = array_values(array_unique(array_filter([
-            $fallbackOwnerId ?: null,
-            $owner?->getId(),
-        ], static fn ($value) => $value !== null)));
-        if (empty($eligibleOwnerIds)) {
-            $eligibleOwnerIds = [$fallbackOwnerId ?: 1];
-        }
-        
         $season = match (true) {
             in_array($month, [3, 4, 5], true) => 'Printemps',
             in_array($month, [6, 7, 8], true) => 'Été',
@@ -77,20 +67,13 @@ class PlantSuggestionController extends AbstractController
         $seasonLabels = $normalizedAliases[$seasonKey] ?? [$seasonKey];
         $allYearLabels = $normalizedAliases[$allYearKey] ?? [$allYearKey];
         // Cache + déduplication par nom pour la saison
-        $cacheKey = 'plant_suggestions_' . implode('_', $eligibleOwnerIds) . '_' . $seasonKey;
+        $cacheKey = 'plant_suggestions_all_' . $seasonKey;
         $cacheItem = $cache->getItem($cacheKey);
-        $suggestions = $cacheItem->get();
         if (!$cacheItem->isHit()) {
             $sub = $plantTemplateRepository->createQueryBuilder('pt2');
             $subExpr = $sub->expr();
             $sub = $sub
                 ->select('MAX(pt2.id)')
-                ->andWhere(
-                    $subExpr->in(
-                        'pt2.user',
-                        ':eligibleOwners'
-                    )
-                )
                 ->andWhere(
                     $subExpr->orX(
                         $subExpr->in('LOWER(pt2.bestSeason)', ':seasonLabels'),
@@ -98,26 +81,18 @@ class PlantSuggestionController extends AbstractController
                     )
                 )
                 ->groupBy('pt2.name')
-                ->setParameter('eligibleOwners', $eligibleOwnerIds, Connection::PARAM_INT_ARRAY)
                 ->setParameter('seasonLabels', $seasonLabels, Connection::PARAM_STR_ARRAY)
                 ->setParameter('allYearLabels', $allYearLabels, Connection::PARAM_STR_ARRAY);
 
             $qb = $plantTemplateRepository->createQueryBuilder('pt');
             $expr = $qb->expr();
             $qb->andWhere(
-                $expr->in(
-                    'pt.user',
-                    ':eligibleOwners'
-                )
-            )
-               ->andWhere(
                    $expr->orX(
                        $expr->in('LOWER(pt.bestSeason)', ':seasonLabels'),
                        $expr->in('LOWER(pt.bestSeason)', ':allYearLabels')
                    )
                )
                ->andWhere($expr->in('pt.id', $sub->getDQL()))
-               ->setParameter('eligibleOwners', $eligibleOwnerIds, Connection::PARAM_INT_ARRAY)
                ->setParameter('seasonLabels', $seasonLabels, Connection::PARAM_STR_ARRAY)
                ->setParameter('allYearLabels', $allYearLabels, Connection::PARAM_STR_ARRAY)
                ->add('orderBy', "CASE pt.type WHEN 'Fruit' THEN 1 WHEN 'Légume' THEN 2 WHEN 'Herbe' THEN 3 ELSE 4 END, pt.name ASC");
@@ -135,6 +110,8 @@ class PlantSuggestionController extends AbstractController
             $cacheItem->set($suggestions);
             $cacheItem->expiresAfter(300);
             $cache->save($cacheItem);
+        } else {
+            $suggestions = $cacheItem->get();
         }
         
         $monthNames = [
