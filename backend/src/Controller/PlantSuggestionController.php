@@ -15,13 +15,14 @@ class PlantSuggestionController extends AbstractController
     public function suggestions(Request $request, PlantTemplateRepository $plantTemplateRepository, CacheItemPoolInterface $cache): JsonResponse
     {
         $month = (int) $request->query->get('month', date('n'));
-        $ownerId = (int)($_ENV['SUGGESTION_OWNER_ID'] ?? 1);
+        $owner = $this->getUser();
+        $ownerId = $owner?->getId() ?? (int)($_ENV['SUGGESTION_OWNER_ID'] ?? 1);
         
         $season = match (true) {
-            in_array($month, [12, 1, 2]) => 'Été',
-            in_array($month, [3, 4, 5]) => 'Automne', 
-            in_array($month, [6, 7, 8]) => 'Hiver',
-            in_array($month, [9, 10, 11]) => 'Printemps',
+            in_array($month, [3, 4, 5], true) => 'Printemps',
+            in_array($month, [6, 7, 8], true) => 'Été',
+            in_array($month, [9, 10, 11], true) => 'Automne',
+            in_array($month, [12, 1, 2], true) => 'Hiver',
             default => 'Printemps'
         };
         // Cache + déduplication par nom pour la saison
