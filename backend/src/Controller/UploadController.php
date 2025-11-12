@@ -42,7 +42,19 @@ class UploadController extends AbstractController
         $folder = $_ENV['CLOUDINARY_UPLOAD_FOLDER'] ?? 'ravina/plants';
 
         $tempDir = sys_get_temp_dir();
-        $extension = $file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg';
+        $extension = $file->getClientOriginalExtension();
+        if (!$extension) {
+            $mime = $file->getMimeType() ?? '';
+            if (str_contains($mime, 'png')) {
+                $extension = 'png';
+            } elseif (str_contains($mime, 'webp')) {
+                $extension = 'webp';
+            } elseif (str_contains($mime, 'gif')) {
+                $extension = 'gif';
+            } else {
+                $extension = 'jpg';
+            }
+        }
         $tempFilename = uniqid('cloudinary_', true) . '.' . $extension;
         $tempFile = $file->move($tempDir, $tempFilename);
         $uploadedFilePath = $tempFile->getPathname();
