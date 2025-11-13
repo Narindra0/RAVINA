@@ -31,12 +31,18 @@ const HeroWrapper = styled(Box)(() => ({
   boxShadow: '0 30px 60px rgba(15, 118, 110, 0.25)',
 }))
 
-const HeroImage = styled('img')(() => ({
+const HeroImage = styled('img')(({ theme }) => ({
   width: '100%',
   display: 'block',
-  aspectRatio: '4 / 3',
   objectFit: 'cover',
   transition: 'transform 0.4s ease',
+  height: 280,
+  [theme.breakpoints.up('sm')]: {
+    height: 350,
+  },
+  [theme.breakpoints.up('md')]: {
+    height: 400,
+  },
   '&:hover': {
     transform: 'scale(1.01)',
   },
@@ -120,6 +126,19 @@ const resolveImageSrc = (imageSlug) => {
   return `/images/plantes/${imageSlug}`
 }
 
+const formatWateringFrequency = (frequency) => {
+  if (!frequency) return 'Non renseigné'
+  const freqNum = parseInt(frequency, 10)
+  if (isNaN(freqNum)) return frequency
+  if (freqNum === 1) return 'Tous les jours'
+  return `Tous les ${freqNum} jours`
+}
+
+const formatHarvestDays = (days) => {
+  if (!days) return null
+  return `environ ${days} jours`
+}
+
 export default function PlantTemplateDetailsModal({
   open,
   onClose,
@@ -193,10 +212,12 @@ export default function PlantTemplateDetailsModal({
           </Grid>
         ) : (
           <Grid container spacing={4} alignItems="stretch">
-            <Grid item xs={12} md={5}>
+            <Grid item xs={12}>
               <HeroWrapper>
                 <HeroImage src={heroSrc} alt={plant?.name || 'Plant illustration'} loading="lazy" />
               </HeroWrapper>
+            </Grid>
+            <Grid item xs={12}>
               <TagContainer direction="row">
                 {plant?.type ? (
                   <TagChip
@@ -220,7 +241,7 @@ export default function PlantTemplateDetailsModal({
                 ) : null}
               </TagContainer>
             </Grid>
-            <Grid item xs={12} md={7}>
+            <Grid item xs={12}>
               <Stack spacing={3}>
                 <Box>
                   <SectionTitle variant="subtitle2">
@@ -240,7 +261,7 @@ export default function PlantTemplateDetailsModal({
                     <DetailItem
                       icon={<WaterDropIcon color="success" />}
                       label="Arrosage recommandé"
-                      value={plant?.wateringFrequency}
+                      value={formatWateringFrequency(plant?.wateringFrequency)}
                       secondary={
                         plant?.wateringQuantityMl
                           ? `${plant.wateringQuantityMl} ml par arrosage`
@@ -252,11 +273,7 @@ export default function PlantTemplateDetailsModal({
                     <DetailItem
                       icon={<CalendarMonthIcon color="warning" />}
                       label="Durée de culture"
-                      value={
-                        plant?.expectedHarvestDays
-                          ? `${plant.expectedHarvestDays} jours avant récolte`
-                          : null
-                      }
+                      value={formatHarvestDays(plant?.expectedHarvestDays)}
                     />
                   </Grid>
                 </Grid>
@@ -273,9 +290,6 @@ export default function PlantTemplateDetailsModal({
                           : 'rgba(226, 232, 240, 0.35)',
                     }}
                   >
-                    <SectionTitle variant="subtitle2">
-                      Notes personnelles
-                    </SectionTitle>
                     <Typography variant="body1">{plant.notes}</Typography>
                   </Box>
                 ) : null}

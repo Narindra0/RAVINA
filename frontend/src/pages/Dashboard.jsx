@@ -26,7 +26,7 @@ import {
   InfoOutlined,
 } from '@mui/icons-material'
 
-import { dashboardStyles } from '../styles/Dashboard.styles'
+import { dashboardStyles, PRIMARY_GREEN, DARK_GREEN } from '../styles/Dashboard.styles'
 const WeatherCard = lazy(() => import('./WeatherCard'))
 const CreateUserPlantationModal = lazy(() => import('./CreateUserPlantationModal'))
 const PlantTemplateDetailsModal = lazy(() => import('../components/PlantTemplateDetailsModal'))
@@ -267,8 +267,8 @@ export default function Dashboard() {
                 <Grid container spacing={1.5}>
                   {suggestions.suggestions.map((plant) => (
                     <Grid item xs={12} sm={6} md={3} key={plant.id}>
-                      <Card sx={dashboardStyles.suggestionCard}>
-                        <Box sx={dashboardStyles.suggestionCardImage}>
+                      <Card sx={dashboardStyles.plantCard}>
+                        <Box sx={dashboardStyles.plantCardImage}>
                           <img
                             src={getPlantImagePath(plant.imageSlug)}
                             alt={plant.name}
@@ -276,53 +276,45 @@ export default function Dashboard() {
                             onError={(e) => { e.currentTarget.onerror = null; e.currentTarget.src = DEFAULT_PLANT_IMAGE; }}
                           />
                         </Box>
-                        <CardContent sx={dashboardStyles.suggestionCardContent}>
-                          <Box>
-                            <Typography component="h3" sx={dashboardStyles.suggestionCardTitle}>
+                        <CardContent>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+                            <Typography 
+                              variant="h6" 
+                              sx={{
+                                ...dashboardStyles.plantCardTitle,
+                                cursor: 'pointer',
+                                color: PRIMARY_GREEN,
+                                '&:hover': {
+                                  textDecoration: 'underline',
+                                  color: DARK_GREEN,
+                                },
+                              }}
+                              onClick={() => handleOpenDetails(plant.id, plant)}
+                            >
                               {plant.name}
                             </Typography>
-                            <Box sx={dashboardStyles.suggestionCardMeta}>
-                              {plant.type ? (
-                                <Box sx={dashboardStyles.suggestionCardBadge}>{plant.type}</Box>
-                              ) : null}
-                              {plant.bestSeason ? (
-                                <Typography variant="caption" color="text.secondary">
-                                  Saison idéale : {plant.bestSeason}
-                                </Typography>
-                              ) : null}
+                            <Box sx={dashboardStyles.plantCardBadge}>
+                              {plant.type}
                             </Box>
                           </Box>
                         </CardContent>
                         <CardActions sx={dashboardStyles.cardActions}>
-                          <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
-                            <Button
-                              fullWidth
-                              size="medium"
-                              variant="outlined"
-                              startIcon={<InfoOutlined />}
-                              onClick={() => handleOpenDetails(plant.id, plant)}
-                              sx={{ textTransform: 'none', fontWeight: 600 }}
-                              aria-label={`Voir les détails de ${plant.name}`}
-                            >
-                              Détails
-                            </Button>
-                            <Button
-                              fullWidth
-                              size="medium"
-                              variant="contained"
-                              startIcon={<AddCircleOutline />}
-                              onClick={() => handleOpenCreatePlantation(plant.id)}
-                              sx={{ 
-                                textTransform: 'none', 
-                                fontWeight: 700, 
-                                backgroundColor: '#10b981', 
-                                '&:hover': { backgroundColor: '#059669' } 
-                              }}
-                              aria-label={`Planter ${plant.name}`}
-                            >
-                              Planter
-                            </Button>
-                          </Box>
+                          <Button
+                            fullWidth
+                            size="medium"
+                            variant="contained"
+                            startIcon={<AddCircleOutline />}
+                            onClick={() => handleOpenCreatePlantation(plant.id)}
+                            sx={{ 
+                              textTransform: 'none', 
+                              fontWeight: 700, 
+                              backgroundColor: '#10b981', 
+                              '&:hover': { backgroundColor: '#059669' } 
+                            }}
+                            aria-label={`Planter ${plant.name}`}
+                          >
+                            Planter
+                          </Button>
                         </CardActions>
                       </Card>
                     </Grid>
@@ -372,50 +364,26 @@ export default function Dashboard() {
                         </Box>
                         <CardContent>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
-                            <Typography variant="h6" sx={dashboardStyles.plantCardTitle}>
+                            <Typography 
+                              variant="h6" 
+                              sx={{
+                                ...dashboardStyles.plantCardTitle,
+                                cursor: 'pointer',
+                                color: PRIMARY_GREEN,
+                                '&:hover': {
+                                  textDecoration: 'underline',
+                                  color: DARK_GREEN,
+                                },
+                              }}
+                              onClick={() => handleOpenDetails(plant.id, plant)}
+                            >
                               {plant.name}
                             </Typography>
                             <Box sx={dashboardStyles.plantCardBadge}>
                               {plant.type}
                             </Box>
                           </Box>
-
-                          <Box sx={dashboardStyles.plantCardDetails}>
-                            <Box sx={dashboardStyles.plantCardDetailItem}>
-                              <WbSunny sx={{ fontSize: 18, color: '#fbbf24' }} />
-                              <Typography variant="body2">
-                                Exposition : {plant.sunExposure || 'Non renseignée'}
-                              </Typography>
-                            </Box>
-                            <Box sx={dashboardStyles.plantCardDetailItem}>
-                              <Schedule sx={{ fontSize: 18, color: '#6b7280' }} />
-                              <Typography variant="body2">
-                                Récolte :{' '}
-                                {plant.expectedHarvestDays != null
-                                  ? `${plant.expectedHarvestDays} jours`
-                                  : 'N/A'}
-                              </Typography>
-                            </Box>
-                            <Box sx={dashboardStyles.plantCardDetailItem}>
-                              <CalendarMonth sx={{ fontSize: 18, color: '#34d399' }} />
-                              <Typography variant="body2">
-                                Saison idéale : {plant.bestSeason || 'N/A'}
-                              </Typography>
-                            </Box>
-                          </Box>
                         </CardContent>
-                      <CardActions sx={dashboardStyles.cardActions}>
-                        <Button
-                          fullWidth
-                          variant="outlined"
-                          startIcon={<InfoOutlined />}
-                          onClick={() => handleOpenDetails(plant.id, plant)}
-                          sx={{ textTransform: 'none', fontWeight: 600 }}
-                          aria-label={`Voir les détails de ${plant.name}`}
-                        >
-                          Voir les détails
-                        </Button>
-                      </CardActions>
                       </Card>
                     </Grid>
                   ))}
