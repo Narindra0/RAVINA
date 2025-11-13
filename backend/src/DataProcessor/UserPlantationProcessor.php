@@ -70,17 +70,34 @@ final class UserPlantationProcessor implements ProcessorInterface
         }
         $watering = $this->wateringService->compute($data, $meteo, $lastSnapshot);
 
+        $retroactiveDays = 0;
+        if ($startDateImmutable) {
+            $diff = $startDateImmutable->diff($today);
+            if ($diff->invert === 0) {
+                $retroactiveDays = $diff->days;
+            }
+        }
+
         $snapshot = new SuiviSnapshot();
         $snapshot->setDateSnapshot(new \DateTimeImmutable());
         $snapshot->setProgressionPourcentage(sprintf('%.2f', $lifecycle['progression']));
         $snapshot->setStadeActuel((string) $lifecycle['stage']);
         $snapshot->setArrosageRecoDate($watering['date']);
         $snapshot->setArrosageRecoQuantiteMl(sprintf('%.2f', $watering['quantity']));
-        $snapshot->setDecisionDetailsJson([
+        $details = [
             'lifecycle' => $lifecycle['details'] ?? [],
             'watering_notes' => $watering['notes'] ?? [],
             'frequency_days' => $watering['frequency_days'] ?? null,
-        ]);
+        ];
+        if ($retroactiveDays > 0) {
+            $details['retroactive_days'] = $retroactiveDays;
+            $details['retroactive_note'] = sprintf(
+                'Création en retard de %d jour(s) : progression recalculée au %s.',
+                $retroactiveDays,
+                $today->format('d/m/Y')
+            );
+        }
+        $snapshot->setDecisionDetailsJson($details);
         $snapshot->setMeteoDataJson([
             'daily' => $meteo['daily'] ?? [],
             'error' => $meteo['error'] ?? null,

@@ -96,6 +96,8 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
 
   const stage = snapshot?.stadeActuel
   const meteoToday = snapshot?.meteoDataJson?.daily?.[0]
+  const retroactiveNote = snapshot?.decisionDetailsJson?.retroactive_note
+  const retroactiveDays = snapshot?.decisionDetailsJson?.retroactive_days
   const lastSnapshots = isUpcomingPlantation ? [] : rawSnapshots.slice(0, 3)
 
   return (
@@ -146,6 +148,16 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
       >
         {actionError && (
           <Alert severity="error" sx={{ mb: 1 }}>{actionError}</Alert>
+        )}
+        {!isUpcomingPlantation && retroactiveNote && (
+          <Alert severity="info" sx={{ mb: 1 }}>
+            {retroactiveNote}
+            {typeof retroactiveDays === 'number' && retroactiveDays > 0 && (
+              <Typography component="span" sx={{ display: 'block', mt: 0.5 }}>
+                Jours reconstitués&nbsp;: {retroactiveDays}
+              </Typography>
+            )}
+          </Alert>
         )}
         {/* Localisation */}
         <Box display="flex" alignItems="center" gap={1} mb={2}>

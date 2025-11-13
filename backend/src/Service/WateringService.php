@@ -17,13 +17,22 @@ class WateringService
         $baseQuantity = (float) ($template?->getWateringQuantityMl() ?? 500);
         $frequencyDays = $this->resolveFrequencyDays((string) $template?->getWateringFrequency());
 
+        $todayDate = new \DateTimeImmutable('today');
         $referenceDate = $lastSnapshot?->getArrosageRecoDate()
             ?? $plantation->getDatePlantation()
-            ?? new \DateTimeImmutable('today');
+            ?? $todayDate;
 
         $referenceDate = $this->toImmutable($referenceDate);
 
-        $nextDate = $referenceDate->add(new \DateInterval(sprintf('P%dD', $frequencyDays)));
+        if ($referenceDate < $todayDate) {
+            $referenceDate = $todayDate;
+        }
+
+        $interval = new \DateInterval(sprintf('P%dD', $frequencyDays));
+        $nextDate = $referenceDate->add($interval);
+        while ($nextDate < $todayDate) {
+            $nextDate = $nextDate->add($interval);
+        }
         $quantity = $baseQuantity;
         $decisions = [];
 
