@@ -45,6 +45,24 @@ class WaterPlantationController extends AbstractController
         }
 
         $lastSnapshot = $plantation->getSuiviSnapshots()->first() ?: null;
+        $todayDate = new \DateTimeImmutable('today');
+        if ($lastSnapshot instanceof SuiviSnapshot) {
+            $lastSnapshotDate = $lastSnapshot->getDateSnapshot();
+            $details = $lastSnapshot->getDecisionDetailsJson();
+            $alreadyManualToday = $lastSnapshotDate instanceof \DateTimeInterface
+                && $lastSnapshotDate->format('Y-m-d') === $todayDate->format('Y-m-d')
+                && is_array($details)
+                && ($details['manual'] ?? false) === true;
+
+            if ($alreadyManualToday) {
+                return $this->json([
+                    'status' => 'ok',
+                    'snapshot_id' => $lastSnapshot->getId(),
+                    'message' => 'Arrosage déjà enregistré pour aujourd\'hui.',
+                ], 200);
+            }
+        }
+
         $meteo = $this->meteoService->fetchDailyForecast(
             (float) $plantation->getGeolocalisationLat(),
             (float) $plantation->getGeolocalisationLon()
