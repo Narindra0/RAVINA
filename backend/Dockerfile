@@ -1,6 +1,7 @@
 FROM php:8.3-apache
 
 ENV APP_ENV=prod \
+    APP_SECRET=ChangeMePlease \
     COMPOSER_ALLOW_SUPERUSER=1 \
     DEBIAN_FRONTEND=noninteractive
 
@@ -18,7 +19,7 @@ WORKDIR /var/www/html
 COPY composer.json composer.lock symfony.lock ./
 
 RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-    && composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+    && composer install --no-dev --no-scripts --optimize-autoloader --no-interaction --no-progress
 
 COPY . .
 
