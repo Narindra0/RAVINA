@@ -38,11 +38,52 @@ class NotificationEngine
         $todayWeather = $daily[0] ?? null;
         $tomorrowWeather = $daily[1] ?? null;
 
+        $created += $this->handleFrostAlert($plantation, $today, $todayWeather);
         $created += $this->handleHeatAlert($plantation, $today, $todayWeather);
+        $created += $this->handleHeatWaveProactive($plantation, $today, $daily, $lastSnapshot);
         $created += $this->handleRainPostpone($plantation, $today, $todayWeather, $tomorrowWeather, $lastSnapshot);
+        $created += $this->handleExcessRainWarning($plantation, $today, $daily);
         $created += $this->handleMissedWatering($plantation, $today, $lastSnapshot);
+        $created += $this->handleFertilizationReminder($plantation, $today);
 
         return $created;
+    }
+
+    /**
+     * @param array<string, mixed>|null $weather
+     */
+    private function handleFrostAlert(UserPlantation $plantation, \DateTimeImmutable $today, ?array $weather): int
+    {
+        if (!$weather || !$this->isOutdoor($plantation)) {
+            return 0;
+        }
+
+        $minTemp = $weather['temperature_min'] ?? null;
+        if ($minTemp === null || $minTemp > 2) {
+            return 0;
+        }
+
+        $since = $today->sub(new \DateInterval('P1D'));
+        if ($this->notificationRepository->hasRecentNotification($plantation, 'ALERTE_GEL', $since)) {
+            return 0;
+        }
+
+        $priority = $minTemp <= -2 ? Notification::PRIORITY_URGENT : Notification::PRIORITY_IMPORTANT;
+        $title = sprintf('Risque de gel pour %s', $this->resolvePlantName($plantation));
+        $message = sprintf(
+            "La température minimale attendue descend jusqu’à %s°C. Protégez la plante pour éviter les dégâts.",
+            $this->formatTemperature($minTemp)
+        );
+
+        $this->createNotification(
+            $plantation,
+            'ALERTE_GEL',
+            $priority,
+            $title,
+            $message
+        );
+
+        return 1;
     }
 
     private function handleUpcomingPlanting(UserPlantation $plantation, \DateTimeImmutable $today, \DateTimeImmutable $startDate): int
@@ -117,6 +158,63 @@ class NotificationEngine
     }
 
     /**
+     * @param array<int, array<string, mixed>> $daily
+     */
+    private function handleHeatWaveProactive(
+        UserPlantation $plantation,
+        \DateTimeImmutable $today,
+        array $daily,
+        ?SuiviSnapshot $lastSnapshot
+    ): int {
+        if (!$this->isOutdoor($plantation) || !$this->isHeatSensitive($plantation)) {
+            return 0;
+        }
+
+        $hotDays = 0;
+        foreach (array_slice($daily, 0, 3) as $forecast) {
+            $max = $forecast['temperature_max'] ?? null;
+            if ($max !== null && $max >= 30) {
+                $hotDays++;
+            }
+        }
+
+        if ($hotDays < 2) {
+            return 0;
+        }
+
+        $nextWatering = $lastSnapshot?->getArrosageRecoDate();
+        if (!$nextWatering instanceof \DateTimeInterface) {
+            return 0;
+        }
+
+        $nextWatering = $this->toImmutable($nextWatering);
+        if ($nextWatering <= $today->add(new \DateInterval('P1D'))) {
+            return 0;
+        }
+
+        $since = $today->sub(new \DateInterval('P2D'));
+        if ($this->notificationRepository->hasRecentNotification($plantation, 'VIGILANCE_CHALEUR_PROLONGEE', $since)) {
+            return 0;
+        }
+
+        $title = sprintf('Chaleur prolongée : anticipez l’arrosage (%s)', $this->resolvePlantName($plantation));
+        $message = sprintf(
+            "Plusieurs journées > 30°C sont prévues. Surveillez l’humidité et prévoyez un arrosage léger avant le %s.",
+            $nextWatering->format('d/m/Y')
+        );
+
+        $this->createNotification(
+            $plantation,
+            'VIGILANCE_CHALEUR_PROLONGEE',
+            Notification::PRIORITY_IMPORTANT,
+            $title,
+            $message
+        );
+
+        return 1;
+    }
+
+    /**
      * @param array<string, mixed>|null $todayWeather
      * @param array<string, mixed>|null $tomorrowWeather
      */
@@ -178,6 +276,47 @@ class NotificationEngine
         return 1;
     }
 
+    /**
+     * @param array<int, array<string, mixed>> $daily
+     */
+    private function handleExcessRainWarning(
+        UserPlantation $plantation,
+        \DateTimeImmutable $today,
+        array $daily
+    ): int {
+        if (!$this->isOutdoor($plantation)) {
+            return 0;
+        }
+
+        $todayRain = (float) ($daily[0]['precipitation_sum'] ?? 0);
+        $tomorrowRain = (float) ($daily[1]['precipitation_sum'] ?? 0);
+
+        if ($todayRain < 15 && ($todayRain + $tomorrowRain) < 25) {
+            return 0;
+        }
+
+        $since = $today->sub(new \DateInterval('P2D'));
+        if ($this->notificationRepository->hasRecentNotification($plantation, 'SURVEILLANCE_PLUIE', $since)) {
+            return 0;
+        }
+
+        $title = sprintf('Pluie abondante : surveillez le drainage (%s)', $this->resolvePlantName($plantation));
+        $message = sprintf(
+            "Entre aujourd’hui et demain, %s mm de pluie sont attendus. Vérifiez l’évacuation de l’eau et évitez les soucoupes pleines.",
+            $this->formatPrecipitation($todayRain + $tomorrowRain)
+        );
+
+        $this->createNotification(
+            $plantation,
+            'SURVEILLANCE_PLUIE',
+            Notification::PRIORITY_INFO,
+            $title,
+            $message
+        );
+
+        return 1;
+    }
+
     private function handleMissedWatering(UserPlantation $plantation, \DateTimeImmutable $today, ?SuiviSnapshot $lastSnapshot): int
     {
         if (!$lastSnapshot) {
@@ -215,6 +354,41 @@ class NotificationEngine
             $plantation,
             'ARROSAGE_URGENCE',
             Notification::PRIORITY_URGENT,
+            $title,
+            $message
+        );
+
+        return 1;
+    }
+
+    private function handleFertilizationReminder(UserPlantation $plantation, \DateTimeImmutable $today): int
+    {
+        $startDate = $plantation->getDatePlantation();
+        $startDate = $startDate instanceof \DateTimeInterface ? $this->toImmutable($startDate) : null;
+        if (!$startDate) {
+            return 0;
+        }
+
+        $daysSinceStart = $startDate->diff($today)->days;
+        if ($daysSinceStart === 0 || $daysSinceStart % 30 !== 0) {
+            return 0;
+        }
+
+        $since = $today->sub(new \DateInterval('P7D'));
+        if ($this->notificationRepository->hasRecentNotification($plantation, 'RAPPEL_FERTILISATION', $since)) {
+            return 0;
+        }
+
+        $title = sprintf('Pensez à fertiliser (%s)', $this->resolvePlantName($plantation));
+        $message = sprintf(
+            "Cela fait %d jours que la plantation a commencé. Apportez un engrais adapté pour soutenir sa croissance.",
+            $daysSinceStart
+        );
+
+        $this->createNotification(
+            $plantation,
+            'RAPPEL_FERTILISATION',
+            Notification::PRIORITY_INFO,
             $title,
             $message
         );
