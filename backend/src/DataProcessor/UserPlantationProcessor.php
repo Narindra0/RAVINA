@@ -4,6 +4,7 @@ namespace App\DataProcessor;
 
 use ApiPlatform\Metadata\Operation;
 use ApiPlatform\State\ProcessorInterface;
+use App\Entity\Notification;
 use App\Entity\SuiviSnapshot;
 use App\Entity\User;
 use App\Entity\UserPlantation;
@@ -71,11 +72,8 @@ final class UserPlantationProcessor implements ProcessorInterface
         $watering = $this->wateringService->compute($data, $meteo, $lastSnapshot);
 
         $retroactiveDays = 0;
-        if ($startDateImmutable) {
-            $diff = $startDateImmutable->diff($today);
-            if ($diff->invert === 0) {
-                $retroactiveDays = $diff->days;
-            }
+        if ($startDateImmutable && $startDateImmutable < $today) {
+            $retroactiveDays = $startDateImmutable->diff($today)->days;
         }
 
         $snapshot = new SuiviSnapshot();
@@ -89,14 +87,6 @@ final class UserPlantationProcessor implements ProcessorInterface
             'watering_notes' => $watering['notes'] ?? [],
             'frequency_days' => $watering['frequency_days'] ?? null,
         ];
-        if ($retroactiveDays > 0) {
-            $details['retroactive_days'] = $retroactiveDays;
-            $details['retroactive_note'] = sprintf(
-                'Création en retard de %d jour(s) : progression recalculée au %s.',
-                $retroactiveDays,
-                $today->format('d/m/Y')
-            );
-        }
         $snapshot->setDecisionDetailsJson($details);
         $snapshot->setMeteoDataJson([
             'daily' => $meteo['daily'] ?? [],
@@ -105,10 +95,42 @@ final class UserPlantationProcessor implements ProcessorInterface
 
         $data->addSuiviSnapshot($snapshot);
 
+        if ($retroactiveDays > 0) {
+            $this->createLateRegistrationNotification($data, $retroactiveDays, $startDateImmutable, $today);
+        }
+
         $this->entityManager->persist($data);
         $this->entityManager->flush();
 
         return $data;
+    }
+
+    private function createLateRegistrationNotification(
+        UserPlantation $plantation,
+        int $retroactiveDays,
+        ?\DateTimeImmutable $startDate,
+        \DateTimeImmutable $today
+    ): void {
+        $notification = new Notification();
+        $notification->setUserPlantation($plantation);
+        $notification->setTypeConseil('ENREGISTREMENT_RETARD');
+        $notification->setNiveauPriorite(Notification::PRIORITY_IMPORTANT);
+
+        $plantName = $plantation->getPlantTemplate()?->getName() ?? 'votre plante';
+        $notification->setTitre(sprintf('Plantation ajoutée en retard (%s)', $plantName));
+
+        $startLabel = $startDate ? $startDate->format('d/m/Y') : 'date inconnue';
+        $message = sprintf(
+            "Cette plantation a été enregistrée avec %d jour(s) de décalage. Revoyez les étapes réalisées depuis le %s et mettez à jour votre suivi si nécessaire. Date de régularisation : %s.",
+            $retroactiveDays,
+            $startLabel,
+            $today->format('d/m/Y')
+        );
+        $notification->setMessageDetaille($message);
+        $notification->setStatutLecture(false);
+
+        $plantation->addNotification($notification);
+        $this->entityManager->persist($notification);
     }
 }
 
