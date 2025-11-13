@@ -105,8 +105,6 @@ class NotificationEngine
         return 1;
     }
 
-    }
-
     /**
      * @param array<string, mixed>|null $weather
      */
