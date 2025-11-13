@@ -54,22 +54,6 @@ class ProcessPlantationsCommand extends Command
                 continue;
             }
 
-            $datePlantation = $plantation->getDatePlantation();
-            if ($datePlantation instanceof \DateTimeInterface) {
-                $plantingDate = $datePlantation instanceof \DateTimeImmutable
-                    ? $datePlantation
-                    : \DateTimeImmutable::createFromInterface($datePlantation);
-
-                if ($plantingDate > $today) {
-                    $createdForPlantation = $this->notificationEngine->handlePrePlanting($plantation, $today);
-                    if ($createdForPlantation > 0) {
-                        $notificationsCreated += $createdForPlantation;
-                        $hasChanges = true;
-                    }
-                    continue;
-                }
-            }
-
             $meteo = $this->meteoService->fetchDailyForecast(
                 (float) $plantation->getGeolocalisationLat(),
                 (float) $plantation->getGeolocalisationLon()
@@ -105,7 +89,6 @@ class ProcessPlantationsCommand extends Command
                 'lifecycle' => $lifecycle['details'] ?? [],
                 'watering_notes' => $watering['notes'] ?? [],
                 'frequency_days' => $watering['frequency_days'] ?? null,
-                'missed_occurrences' => $watering['missed_occurrences'] ?? 0,
             ]);
             $snapshot->setMeteoDataJson([
                 'daily' => $meteo['daily'] ?? [],
