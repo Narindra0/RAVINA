@@ -78,12 +78,13 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
 
   if (!plantation) return null
   const template = plantation.plantTemplate || {}
-  const snapshot = plantation.suiviSnapshots?.[0]
-  const progression = snapshot ? parseFloat(snapshot.progressionPourcentage) : 0
-  const statusColor = getStatusColor(plantation.etatActuel)
   const startDate = plantation.datePlantation
   const daysUntilPlanting = startDate ? daysUntil(startDate) : null
   const isUpcomingPlantation = daysUntilPlanting !== null && daysUntilPlanting > 0
+  const rawSnapshots = Array.isArray(plantation.suiviSnapshots) ? plantation.suiviSnapshots : []
+  const snapshot = isUpcomingPlantation ? null : rawSnapshots[0]
+  const progression = snapshot ? parseFloat(snapshot.progressionPourcentage) : 0
+  const statusColor = getStatusColor(plantation.etatActuel)
   const startDateLabel = startDate
     ? new Date(startDate).toLocaleDateString('fr-FR', {
         year: 'numeric',
@@ -91,11 +92,11 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
         day: 'numeric'
       })
     : null
-  const d = !isUpcomingPlantation && snapshot ? daysUntil(snapshot.arrosageRecoDate) : null
+  const d = snapshot ? daysUntil(snapshot.arrosageRecoDate) : null
 
   const stage = snapshot?.stadeActuel
   const meteoToday = snapshot?.meteoDataJson?.daily?.[0]
-  const lastSnapshots = (plantation.suiviSnapshots || []).slice(0, 3)
+  const lastSnapshots = isUpcomingPlantation ? [] : rawSnapshots.slice(0, 3)
 
   return (
     <Dialog
@@ -241,29 +242,30 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
 
         <Divider sx={{ my: 1.5 }} />
 
-        {/* Historique récent */}
-        <Box>
-          <Box display="flex" alignItems="center" gap={1} mb={1}>
-            <Timeline sx={{ color: '#6b7280' }} />
-            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Derniers suivis</Typography>
-          </Box>
-          {lastSnapshots.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">Aucun snapshot récent.</Typography>
-          ) : (
-            <Box display="flex" flexDirection="column" gap={1}>
-              {lastSnapshots.map((s, idx) => (
-                <Box key={idx} display="flex" justifyContent="space-between" alignItems="center">
-                  <Typography variant="body2" color="text.secondary">
-                    {new Date(s.dateSnapshot).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' })}
-                  </Typography>
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {s.stadeActuel} · {Math.round(parseFloat(s.progressionPourcentage || '0'))}%
-                  </Typography>
-                </Box>
-              ))}
+        {!isUpcomingPlantation && (
+          <Box>
+            <Box display="flex" alignItems="center" gap={1} mb={1}>
+              <Timeline sx={{ color: '#6b7280' }} />
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Derniers suivis</Typography>
             </Box>
-          )}
-        </Box>
+            {lastSnapshots.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">Aucun snapshot récent.</Typography>
+            ) : (
+              <Box display="flex" flexDirection="column" gap={1}>
+                {lastSnapshots.map((s, idx) => (
+                  <Box key={idx} display="flex" justifyContent="space-between" alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      {new Date(s.dateSnapshot).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' })}
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {s.stadeActuel} · {Math.round(parseFloat(s.progressionPourcentage || '0'))}%
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            )}
+          </Box>
+        )}
       </DialogContent>
 
       <Box display="flex" justifyContent="space-between" alignItems="center" px={2} py={1.5}>
