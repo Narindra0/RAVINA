@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { api } from '../lib/axios';
 import Sidebar from './Sidebar';
-import { LocalFlorist, WaterDrop, LocationOn, Menu as MenuIcon, AddCircleOutline } from '@mui/icons-material';
+import { LocalFlorist, WaterDrop, LocationOn, Menu as MenuIcon, AddCircleOutline, CalendarMonth } from '@mui/icons-material';
 import { IconButton, Box, Button } from '@mui/material';
 import '../styles/Plantations.styles.css';
 import PlantationDetailsModal from './PlantationDetailsModal';
@@ -207,6 +207,16 @@ export default function Plantations() {
             const statusLabel = getStatusLabel(plantation.etatActuel);
             const plantImage = getPlantImagePath(template?.imageSlug);
             const currentStage = getCurrentStage(template?.cyclePhasesJson, progression);
+            const startDate = plantation.datePlantation;
+            const daysUntilPlanting = startDate ? daysUntil(startDate) : null;
+            const isUpcomingPlantation = daysUntilPlanting !== null && daysUntilPlanting > 0;
+            const startDateLabel = startDate
+              ? new Date(startDate).toLocaleDateString('fr-FR', {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                })
+              : null;
 
             return (
               <article
@@ -240,7 +250,28 @@ export default function Plantations() {
                   </div>
                 </div>
 
-                {snapshot && (
+                {isUpcomingPlantation && (
+                  <div className="plantation-watering-section">
+                    <CalendarMonth className="watering-icon" />
+                    <div className="watering-texts">
+                      <p className="watering-text">
+                        {(() => {
+                          if (daysUntilPlanting === 1) {
+                            return 'À planter dans 1 jour';
+                          }
+                          return `À planter dans ${daysUntilPlanting} jours`;
+                        })()}
+                      </p>
+                      {startDateLabel && (
+                        <p className="watering-subtext">
+                          {`Date prévue : ${startDateLabel}`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {!isUpcomingPlantation && snapshot && (
                   <>
                     <div className="plantation-growth-section">
                       <div className="stage-label-top">

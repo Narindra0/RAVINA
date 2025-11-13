@@ -23,6 +23,17 @@ class NotificationEngine
     {
         $created = 0;
         $today = new \DateTimeImmutable('today');
+        $startDate = $plantation->getDatePlantation();
+        $startDateImmutable = $startDate instanceof \DateTimeInterface ? $this->toImmutable($startDate) : null;
+
+        if ($startDateImmutable) {
+            $created += $this->handleUpcomingPlanting($plantation, $today, $startDateImmutable);
+
+            if ($today < $startDateImmutable) {
+                return $created;
+            }
+        }
+
         $daily = $this->extractDaily($meteoData);
         $todayWeather = $daily[0] ?? null;
         $tomorrowWeather = $daily[1] ?? null;
@@ -32,6 +43,39 @@ class NotificationEngine
         $created += $this->handleMissedWatering($plantation, $today, $lastSnapshot);
 
         return $created;
+    }
+
+    private function handleUpcomingPlanting(UserPlantation $plantation, \DateTimeImmutable $today, \DateTimeImmutable $startDate): int
+    {
+        if ($startDate <= $today) {
+            return 0;
+        }
+
+        $daysUntilStart = (int) $today->diff($startDate)->days;
+        if ($daysUntilStart < 2 || $daysUntilStart > 3) {
+            return 0;
+        }
+
+        $since = $today->sub(new \DateInterval('P5D'));
+        if ($this->notificationRepository->hasRecentNotification($plantation, 'PLANTATION_IMMINENTE', $since)) {
+            return 0;
+        }
+
+        $title = sprintf('Plantation imminente pour %s', $this->resolvePlantName($plantation));
+        $message = sprintf(
+            "Votre plantation est prévue le %s. Préparez le matériel et vérifiez vos conditions de culture.",
+            $startDate->format('d/m/Y')
+        );
+
+        $this->createNotification(
+            $plantation,
+            'PLANTATION_IMMINENTE',
+            Notification::PRIORITY_INFO,
+            $title,
+            $message
+        );
+
+        return 1;
     }
 
     /**
