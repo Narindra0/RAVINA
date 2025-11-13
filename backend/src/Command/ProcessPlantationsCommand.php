@@ -61,11 +61,17 @@ class ProcessPlantationsCommand extends Command
 
             $lastSnapshot = $plantation->getSuiviSnapshots()->first();
             $lastSnapshot = $lastSnapshot instanceof SuiviSnapshot ? $lastSnapshot : null;
+            $startDate = $plantation->getDatePlantation();
+            $startDateImmutable = $startDate instanceof \DateTimeInterface ? \DateTimeImmutable::createFromInterface($startDate) : null;
 
             $createdForPlantation = $this->notificationEngine->evaluate($plantation, $meteo, $lastSnapshot);
             $notificationsCreated += $createdForPlantation;
             if ($createdForPlantation > 0) {
                 $hasChanges = true;
+            }
+
+            if ($startDateImmutable && $today < $startDateImmutable) {
+                continue;
             }
 
             if ($lastSnapshot instanceof SuiviSnapshot) {

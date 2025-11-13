@@ -36,6 +36,12 @@ class PlantationsRefresher
                 continue;
             }
 
+            $startDate = $plantation->getDatePlantation();
+            $startDateImmutable = $startDate instanceof \DateTimeInterface ? \DateTimeImmutable::createFromInterface($startDate) : null;
+            if ($startDateImmutable && $today < $startDateImmutable) {
+                continue;
+            }
+
             $lastSnapshot = $plantation->getSuiviSnapshots()->first();
             $hasToday = false;
             if ($lastSnapshot instanceof SuiviSnapshot) {

@@ -46,8 +46,20 @@ final class UserPlantationProcessor implements ProcessorInterface
             $data->setEtatActuel(UserPlantation::STATUS_ACTIVE);
         }
 
+        $startDate = $data->getDatePlantation();
+        $startDateImmutable = $startDate instanceof \DateTimeInterface ? \DateTimeImmutable::createFromInterface($startDate) : null;
+        $today = new \DateTimeImmutable('today');
+
         $latitude = (float) $data->getGeolocalisationLat();
         $longitude = (float) $data->getGeolocalisationLon();
+
+        if ($startDateImmutable && $today < $startDateImmutable) {
+            $this->entityManager->persist($data);
+            $this->entityManager->flush();
+
+            return $data;
+        }
+
         $meteo = $this->meteoService->fetchDailyForecast($latitude, $longitude);
         $lifecycle = $this->lifecycleService->compute($data);
         $lastSnapshot = $data->getSuiviSnapshots()->first() ?: null;

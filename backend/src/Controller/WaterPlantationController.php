@@ -37,6 +37,13 @@ class WaterPlantationController extends AbstractController
             return $this->json(['detail' => 'Accès refusé.'], 403);
         }
 
+        $startDate = $plantation->getDatePlantation();
+        $startDateImmutable = $startDate instanceof \DateTimeInterface ? \DateTimeImmutable::createFromInterface($startDate) : null;
+        $today = new \DateTimeImmutable('today');
+        if ($startDateImmutable && $today < $startDateImmutable) {
+            return $this->json(['detail' => 'La plantation n’a pas encore débuté. Arrosage impossible avant la date de plantation.'], 400);
+        }
+
         $lastSnapshot = $plantation->getSuiviSnapshots()->first() ?: null;
         $meteo = $this->meteoService->fetchDailyForecast(
             (float) $plantation->getGeolocalisationLat(),
