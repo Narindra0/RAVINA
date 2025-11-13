@@ -8,6 +8,7 @@ import { dashboardRoute } from './dashboardRoute'
 import { plantsRoute } from './plantsRoute'
 import { meteoRoute } from './MeteoRoute' // ✅ ajouté ici
 import { plantationsRoute } from './plantationsRoute'
+import { notificationsRoute } from './notificationsRoute'
 
 const routeTree = rootRoute.addChildren([
   homeRoute,
@@ -17,6 +18,7 @@ const routeTree = rootRoute.addChildren([
   plantsRoute,
   meteoRoute, // ✅ ajouté ici aussi
   plantationsRoute,
+  notificationsRoute,
 ])
 
 const router = createRouter({ routeTree })

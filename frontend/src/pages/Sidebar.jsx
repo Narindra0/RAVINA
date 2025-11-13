@@ -1,15 +1,18 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { 
     Box, 
     Typography, 
     Button, 
-    Drawer 
+    Drawer,
+    Badge,
 } from '@mui/material'
-import { Home, Logout, Cloud, LocalFlorist } from '@mui/icons-material'
+import { Home, Logout, Cloud, LocalFlorist, Notifications as NotificationsIcon } from '@mui/icons-material'
 // 🚨 CORRECTION: Utilisation des hooks et composants de TanStack Router
 import { Link, useRouterState } from '@tanstack/react-router' 
 
 import { authStore } from '../store/auth'
+import NotificationPopup from '../components/NotificationPopup'
+import { useNotifications } from '../hooks/useNotifications'
 
 // Import de votre logo
 import orientMadaLogo from '../assets/logo-texte.png'
@@ -111,6 +114,35 @@ export default function Sidebar({ user, isMobileOpen, onClose }) {
   // 🚨 CORRECTION: Utilisation de useRouterState pour obtenir le chemin actuel
   const routerState = useRouterState();
   const currentPath = routerState.location.pathname; 
+  const { notifications, markAsRead, unreadCount, refresh } = useNotifications({ polling: true, unreadOnly: true });
+  const [activeNotification, setActiveNotification] = useState(null);
+
+  useEffect(() => {
+    if (!notifications || notifications.length === 0) {
+      setActiveNotification(null);
+      return;
+    }
+
+    if (!activeNotification || !notifications.some((item) => item.id === activeNotification.id)) {
+      setActiveNotification(notifications[0]);
+    }
+  }, [notifications, activeNotification]);
+
+  const handleNotificationDismiss = async (id) => {
+    if (!id) {
+      setActiveNotification(null);
+      return;
+    }
+
+    try {
+      await markAsRead(id);
+      await refresh();
+    } catch (error) {
+      console.error('Erreur lors de la confirmation de la notification:', error);
+    } finally {
+      setActiveNotification(null);
+    }
+  };
 
   const handleLogout = () => {
     authStore.clearToken()
@@ -173,6 +205,23 @@ export default function Sidebar({ user, isMobileOpen, onClose }) {
             </Button>
         </Link>
 
+        <Link to="/notifications" style={sidebarStyles.tanstackLinkBase} onClick={onClose}>
+            <Button 
+                sx={sidebarStyles.navButton(isPathActive('/notifications'))}
+            >
+              <Badge 
+                badgeContent={unreadCount} 
+                color="error" 
+                overlap="circular" 
+                max={99}
+                invisible={!unreadCount}
+              >
+                <NotificationsIcon sx={{ fontSize: 22 }} />
+              </Badge>
+              Notifications
+            </Button>
+        </Link>
+
       </Box>
 
       {/* 3. Footer - Bouton Déconnexion */}
@@ -222,6 +271,12 @@ export default function Sidebar({ user, isMobileOpen, onClose }) {
       >
         {sidebarContent}
       </Drawer>
+
+      <NotificationPopup
+        notification={activeNotification}
+        onAcknowledge={handleNotificationDismiss}
+        onClose={handleNotificationDismiss}
+      />
     </>
   )
 }

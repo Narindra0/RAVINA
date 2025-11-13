@@ -118,8 +118,7 @@ class UserPlantation
      */
     #[ORM\OneToMany(mappedBy: 'userPlantation', targetEntity: Notification::class, orphanRemoval: true, cascade: ['persist'])]
     #[ORM\OrderBy(['dateCreation' => 'DESC'])]
-    #[ApiProperty(writable: false)]
-    #[Groups(['user_plantation:read'])]
+    #[ApiProperty(writable: false, readable: false)]
     private Collection $notifications;
 
     public function __construct()

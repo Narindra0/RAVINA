@@ -1,9 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../lib/axios';
+import { authStore } from '../store/auth';
 
 const POLLING_INTERVAL_MS = 60000;
 
-export function useNotifications({ polling = true } = {}) {
+export function useNotifications({
+  polling = true,
+  unreadOnly = true,
+  enabled = true,
+} = {}) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -11,16 +16,22 @@ export function useNotifications({ polling = true } = {}) {
   const mountedRef = useRef(false);
 
   const fetchNotifications = useCallback(async () => {
+    if (!enabled || !authStore.isAuthenticated()) {
+      return;
+    }
+
     setLoading(true);
     setError(null);
-    try {
-      const response = await api.get('/notifications', {
-        params: {
-          statutLecture: false,
-          order: { dateCreation: 'desc' },
-        },
-      });
 
+    try {
+      const params = {
+        'order[dateCreation]': 'desc',
+      };
+      if (unreadOnly) {
+        params.statutLecture = false;
+      }
+
+      const response = await api.get('/notifications', { params });
       const payload = response.data;
       const list = Array.isArray(payload)
         ? payload
@@ -39,7 +50,7 @@ export function useNotifications({ polling = true } = {}) {
         setLoading(false);
       }
     }
-  }, []);
+  }, [enabled, unreadOnly]);
 
   const markAsRead = useCallback(async (notificationId) => {
     if (!notificationId) return;
@@ -55,14 +66,24 @@ export function useNotifications({ polling = true } = {}) {
         }
       );
 
-      if (mountedRef.current) {
-        setNotifications((prev) => prev.filter((item) => item.id !== notificationId));
+      if (!mountedRef.current) {
+        return;
       }
+
+      setNotifications((prev) => {
+        if (unreadOnly) {
+          return prev.filter((item) => item.id !== notificationId);
+        }
+
+        return prev.map((item) =>
+          item.id === notificationId ? { ...item, statutLecture: true } : item
+        );
+      });
     } catch (err) {
       console.error('Impossible de marquer la notification comme lue:', err);
       throw err;
     }
-  }, []);
+  }, [unreadOnly]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -80,12 +101,21 @@ export function useNotifications({ polling = true } = {}) {
     };
   }, [fetchNotifications, polling]);
 
+  const unreadCount = useMemo(() => {
+    if (unreadOnly) {
+      return notifications.length;
+    }
+    return notifications.filter((item) => item?.statutLecture === false).length;
+  }, [notifications, unreadOnly]);
+
   return {
     notifications,
     loading,
     error,
+    unreadCount,
     refresh: fetchNotifications,
     markAsRead,
+    setNotifications,
   };
 }
 

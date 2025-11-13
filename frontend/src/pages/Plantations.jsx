@@ -6,8 +6,6 @@ import { IconButton, Box, Button } from '@mui/material';
 import '../styles/Plantations.styles.css';
 import PlantationDetailsModal from './PlantationDetailsModal';
 import CreateUserPlantationModal from './CreateUserPlantationModal';
-import NotificationPopup from '../components/NotificationPopup';
-import { useNotifications } from '../hooks/useNotifications';
 
 const getPlantImagePath = (imageSlug) => {
   if (!imageSlug) {
@@ -98,8 +96,6 @@ export default function Plantations() {
   const [isSidebarMobileOpen, setIsSidebarMobileOpen] = useState(false);
   const [selectedPlantation, setSelectedPlantation] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
-  const { notifications, markAsRead } = useNotifications();
-  const [activeNotification, setActiveNotification] = useState(null);
 
   const toggleSidebarMobile = () => {
     setIsSidebarMobileOpen((v) => !v);
@@ -149,32 +145,6 @@ export default function Plantations() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     window.__refreshPlantations = fetchPlantations;
   }, []);
-
-  useEffect(() => {
-    if (notifications.length === 0) {
-      setActiveNotification(null);
-      return;
-    }
-
-    if (!activeNotification || !notifications.some((item) => item.id === activeNotification.id)) {
-      setActiveNotification(notifications[0]);
-    }
-  }, [notifications, activeNotification]);
-
-  const handleNotificationDismiss = async (id) => {
-    if (!id) {
-      setActiveNotification(null);
-      return;
-    }
-
-    try {
-      await markAsRead(id);
-    } catch (e) {
-      // Laisser l'utilisateur réessayer au prochain rafraîchissement
-    } finally {
-      setActiveNotification(null);
-    }
-  };
 
   return (
     <div className="plantations-page">
@@ -357,12 +327,6 @@ export default function Plantations() {
         open={showAddModal}
         onClose={() => setShowAddModal(false)}
         onCreated={handlePlantationAdded}
-      />
-
-      <NotificationPopup
-        notification={activeNotification}
-        onAcknowledge={handleNotificationDismiss}
-        onClose={handleNotificationDismiss}
       />
     </div>
   );

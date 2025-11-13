@@ -47,7 +47,7 @@ class Notification
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['notification:read', 'user_plantation:read'])]
+    #[Groups(['notification:read'])]
     private ?int $id = null;
 
     #[ORM\ManyToOne(inversedBy: 'notifications')]
@@ -58,33 +58,33 @@ class Notification
 
     #[ORM\Column(type: 'datetime_immutable')]
     #[Assert\NotNull]
-    #[Groups(['notification:read', 'user_plantation:read'])]
+    #[Groups(['notification:read'])]
     private ?\DateTimeImmutable $dateCreation = null;
 
     #[ORM\Column(length: 50)]
     #[Assert\NotBlank]
     #[Assert\Length(max: 50)]
-    #[Groups(['notification:read', 'notification:write', 'user_plantation:read'])]
+    #[Groups(['notification:read', 'notification:write'])]
     private ?string $typeConseil = null;
 
     #[ORM\Column(length: 10)]
     #[Assert\NotBlank]
     #[Assert\Choice(callback: [self::class, 'getAllowedPriorities'])]
-    #[Groups(['notification:read', 'notification:write', 'user_plantation:read'])]
+    #[Groups(['notification:read', 'notification:write'])]
     private ?string $niveauPriorite = null;
 
     #[ORM\Column(length: 255)]
     #[Assert\NotBlank]
-    #[Groups(['notification:read', 'notification:write', 'user_plantation:read'])]
+    #[Groups(['notification:read', 'notification:write'])]
     private ?string $titre = null;
 
     #[ORM\Column(type: 'text')]
     #[Assert\NotBlank]
-    #[Groups(['notification:read', 'notification:write', 'user_plantation:read'])]
+    #[Groups(['notification:read', 'notification:write'])]
     private ?string $messageDetaille = null;
 
     #[ORM\Column(type: 'boolean')]
-    #[Groups(['notification:read', 'notification:write', 'user_plantation:read'])]
+    #[Groups(['notification:read', 'notification:write'])]
     private bool $statutLecture = false;
 
     public function __construct()
