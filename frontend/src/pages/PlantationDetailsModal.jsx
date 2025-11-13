@@ -11,7 +11,7 @@ import {
   Button,
   Alert,
 } from '@mui/material'
-import { Close, LocalFlorist, WaterDrop, LocationOn, Timeline } from '@mui/icons-material'
+import { Close, LocalFlorist, WaterDrop, LocationOn, Timeline, CalendarMonth } from '@mui/icons-material'
 import { useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { api } from '../lib/axios'
@@ -81,7 +81,17 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
   const snapshot = plantation.suiviSnapshots?.[0]
   const progression = snapshot ? parseFloat(snapshot.progressionPourcentage) : 0
   const statusColor = getStatusColor(plantation.etatActuel)
-  const d = snapshot ? daysUntil(snapshot.arrosageRecoDate) : null
+  const startDate = plantation.datePlantation
+  const daysUntilPlanting = startDate ? daysUntil(startDate) : null
+  const isUpcomingPlantation = daysUntilPlanting !== null && daysUntilPlanting > 0
+  const startDateLabel = startDate
+    ? new Date(startDate).toLocaleDateString('fr-FR', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      })
+    : null
+  const d = !isUpcomingPlantation && snapshot ? daysUntil(snapshot.arrosageRecoDate) : null
 
   const stage = snapshot?.stadeActuel
   const meteoToday = snapshot?.meteoDataJson?.daily?.[0]
@@ -144,8 +154,30 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
           </Typography>
         </Box>
 
+        {/* Plantation à venir */}
+        {isUpcomingPlantation && (
+          <Box mb={2} display="flex" alignItems="flex-start" gap={1.5}>
+            <CalendarMonth sx={{ color: '#10b981', mt: '2px' }} />
+            <Box>
+              <Typography variant={isXs ? 'body2' : 'body1'} sx={{ fontWeight: 600 }}>
+                {daysUntilPlanting === 1
+                  ? 'Plantation prévue dans 1 jour'
+                  : `Plantation prévue dans ${daysUntilPlanting} jours`}
+              </Typography>
+              {startDateLabel && (
+                <Typography variant="body2" color="text.secondary">
+                  {`Date planifiée : ${startDateLabel}`}
+                </Typography>
+              )}
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                Préparez le matériel et vos conditions de culture avant cette date.
+              </Typography>
+            </Box>
+          </Box>
+        )}
+
         {/* Progression */}
-        {snapshot && (
+        {!isUpcomingPlantation && snapshot && (
           <Box mb={2}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{stage || 'Stade'}</Typography>
@@ -165,7 +197,7 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
         )}
 
         {/* Arrosage */}
-        {snapshot && (
+        {!isUpcomingPlantation && snapshot && (
           <Box display="flex" alignItems="flex-start" gap={1.5} mb={2}>
             <WaterDrop sx={{ color: '#10b981', mt: '2px' }} />
             <Box>
@@ -186,7 +218,7 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
         )}
 
         {/* Meteo Today */}
-        {meteoToday && (
+        {!isUpcomingPlantation && meteoToday && (
           <Box mb={2} display="flex" gap={1} alignItems="center" flexWrap="wrap">
             <Chip
               icon={<Timeline />}
@@ -246,10 +278,10 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
         <Button
           onClick={handleWater}
           variant="contained"
-          disabled={actionLoading}
+          disabled={actionLoading || isUpcomingPlantation}
           sx={{ backgroundColor: '#10b981', ':hover': { backgroundColor: '#059669' } }}
         >
-          {actionLoading ? '...' : "J'ai arrosé"}
+          {isUpcomingPlantation ? 'Disponible après plantation' : actionLoading ? '...' : "J'ai arrosé"}
         </Button>
       </Box>
     </Dialog>
