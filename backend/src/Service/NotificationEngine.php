@@ -27,11 +27,84 @@ class NotificationEngine
         $todayWeather = $daily[0] ?? null;
         $tomorrowWeather = $daily[1] ?? null;
 
+        $created += $this->handlePlantingToday($plantation, $today);
         $created += $this->handleHeatAlert($plantation, $today, $todayWeather);
         $created += $this->handleRainPostpone($plantation, $today, $todayWeather, $tomorrowWeather, $lastSnapshot);
         $created += $this->handleMissedWatering($plantation, $today, $lastSnapshot);
 
         return $created;
+    }
+
+    public function handlePrePlanting(UserPlantation $plantation, \DateTimeImmutable $today): int
+    {
+        $datePlantation = $plantation->getDatePlantation();
+        if (!$datePlantation instanceof \DateTimeInterface) {
+            return 0;
+        }
+
+        $plantingDate = $this->toImmutable($datePlantation);
+        if ($plantingDate <= $today) {
+            return 0;
+        }
+
+        $daysBefore = (int) $today->diff($plantingDate)->format('%a');
+        if ($daysBefore > 3) {
+            return 0;
+        }
+
+        $since = $today->sub(new \DateInterval('P1D'));
+        if ($this->notificationRepository->hasRecentNotification($plantation, 'PLANTATION_IMMINENTE', $since)) {
+            return 0;
+        }
+
+        $title = sprintf('Préparez la plantation de %s', $this->resolvePlantName($plantation));
+        $message = sprintf(
+            "Votre plantation est programmée pour le %s. Pensez à préparer le matériel et à vérifier les conditions météorologiques.",
+            $plantingDate->format('d/m/Y')
+        );
+
+        $this->createNotification(
+            $plantation,
+            'PLANTATION_IMMINENTE',
+            Notification::PRIORITY_INFO,
+            $title,
+            $message
+        );
+
+        return 1;
+    }
+
+    private function handlePlantingToday(UserPlantation $plantation, \DateTimeImmutable $today): int
+    {
+        $datePlantation = $plantation->getDatePlantation();
+        if (!$datePlantation instanceof \DateTimeInterface) {
+            return 0;
+        }
+
+        $plantingDate = $this->toImmutable($datePlantation);
+        if ($plantingDate->format('Y-m-d') !== $today->format('Y-m-d')) {
+            return 0;
+        }
+
+        $since = $today->sub(new \DateInterval('P1D'));
+        if ($this->notificationRepository->hasRecentNotification($plantation, 'PLANTATION_JOUR_J', $since)) {
+            return 0;
+        }
+
+        $title = sprintf('C’est le jour J pour %s', $this->resolvePlantName($plantation));
+        $message = "N’oubliez pas de procéder à la plantation aujourd’hui pour lancer votre cycle de suivi.";
+
+        $this->createNotification(
+            $plantation,
+            'PLANTATION_JOUR_J',
+            Notification::PRIORITY_IMPORTANT,
+            $title,
+            $message
+        );
+
+        return 1;
+    }
+
     }
 
     /**
@@ -146,13 +219,12 @@ class NotificationEngine
         }
 
         $recommendedDate = $this->toImmutable($recommendedDate);
-        $threshold = $today->sub(new \DateInterval('P2D'));
-
-        if ($recommendedDate > $threshold) {
+        if ($recommendedDate >= $today) {
             return 0;
         }
 
-        if ($this->notificationRepository->hasUnreadNotification($plantation, 'ARROSAGE_URGENCE')) {
+        $since = $today->sub(new \DateInterval('P1D'));
+        if ($this->notificationRepository->hasRecentNotification($plantation, 'ARROSAGE_URGENCE', $since)) {
             return 0;
         }
 
@@ -160,10 +232,13 @@ class NotificationEngine
             return 0;
         }
 
+        $daysLate = max(1, (int) $recommendedDate->diff($today)->format('%a'));
+
         $title = sprintf('Arrosage en retard (%s)', $this->resolvePlantName($plantation));
         $message = sprintf(
-            "L’arrosage prévu le %s n’a pas été effectué. Donnez de l’eau dès que possible%s.",
+            "L’arrosage prévu le %s n’a pas été effectué depuis %d jour(s). Donnez de l’eau dès que possible%s.",
             $recommendedDate->format('d/m/Y'),
+            $daysLate,
             $this->isOutdoor($plantation) ? ', surtout en extérieur' : ''
         );
 

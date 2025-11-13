@@ -23,7 +23,25 @@ class WateringService
 
         $referenceDate = $this->toImmutable($referenceDate);
 
-        $nextDate = $referenceDate->add(new \DateInterval(sprintf('P%dD', $frequencyDays)));
+        $plantingDate = $plantation->getDatePlantation();
+        if ($plantingDate instanceof \DateTimeInterface) {
+            $plantingDate = $this->toImmutable($plantingDate);
+            if ($referenceDate < $plantingDate) {
+                $referenceDate = $plantingDate;
+            }
+        }
+
+        $today = new \DateTimeImmutable('today');
+        $interval = new \DateInterval(sprintf('P%dD', max(1, $frequencyDays)));
+
+        $nextDate = $referenceDate->add($interval);
+        $missedOccurrences = 0;
+
+        while ($nextDate < $today) {
+            $nextDate = $nextDate->add($interval);
+            $missedOccurrences++;
+        }
+
         $quantity = $baseQuantity;
         $decisions = [];
 
@@ -63,6 +81,7 @@ class WateringService
             'quantity' => $quantity,
             'notes' => $decisions,
             'frequency_days' => $frequencyDays,
+            'missed_occurrences' => $missedOccurrences,
         ];
     }
 

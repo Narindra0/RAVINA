@@ -33,20 +33,4 @@ class NotificationRepository extends ServiceEntityRepository
 
         return $result !== null;
     }
-
-    public function hasUnreadNotification(UserPlantation $plantation, string $typeConseil): bool
-    {
-        $result = $this->createQueryBuilder('n')
-            ->select('1')
-            ->andWhere('n.userPlantation = :plantation')
-            ->andWhere('n.typeConseil = :type')
-            ->andWhere('n.statutLecture = false')
-            ->setParameter('plantation', $plantation)
-            ->setParameter('type', $typeConseil)
-            ->setMaxResults(1)
-            ->getQuery()
-            ->getOneOrNullResult();
-
-        return $result !== null;
-    }
 }
