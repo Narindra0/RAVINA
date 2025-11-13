@@ -200,49 +200,64 @@ export default function PlantTemplateDetailsModal({
       >
         {loading ? (
           <Grid container spacing={3}>
-            <Grid item xs={12} md={5}>
-              <Skeleton variant="rounded" height={280} sx={{ borderRadius: 3 }} />
-            </Grid>
             <Grid item xs={12} md={7}>
               <Skeleton height={32} width="60%" />
               <Skeleton height={24} width="80%" sx={{ mt: 1 }} />
               <Skeleton height={24} width="70%" sx={{ mt: 1 }} />
               <Skeleton variant="rounded" height={140} sx={{ mt: 3, borderRadius: 3 }} />
             </Grid>
+            <Grid item xs={12} md={5}>
+              <Skeleton variant="rounded" height={400} sx={{ borderRadius: 3 }} />
+            </Grid>
           </Grid>
         ) : (
-          <Grid container spacing={4} alignItems="stretch">
-            <Grid item xs={12}>
-              <HeroWrapper>
-                <HeroImage src={heroSrc} alt={plant?.name || 'Plant illustration'} loading="lazy" />
-              </HeroWrapper>
-            </Grid>
-            <Grid item xs={12}>
-              <TagContainer direction="row">
-                {plant?.type ? (
-                  <TagChip
-                    icon={<LocalFloristIcon fontSize="small" />}
-                    label={plant.type}
-                  />
-                ) : null}
-                <TagChip
-                  icon={<CalendarMonthIcon fontSize="small" />}
-                  label={plant?.bestSeason || 'Saison inconnue'}
-                />
-                <TagChip
-                  icon={<WbSunnyIcon fontSize="small" />}
-                  label={plant?.sunExposure || 'Exposition ?'}
-                />
-                {plant?.location ? (
-                  <TagChip
-                    icon={<PlaceOutlinedIcon fontSize="small" />}
-                    label={`Emplacement : ${plant.location}`}
-                  />
-                ) : null}
-              </TagContainer>
-            </Grid>
-            <Grid item xs={12}>
+          <Grid container spacing={4} alignItems="flex-start">
+            {/* Colonne gauche : Informations */}
+            <Grid item xs={12} md={7}>
               <Stack spacing={3}>
+                {/* Liste d'informations */}
+                <Box>
+                  <SectionTitle variant="subtitle2" sx={{ mb: 2 }}>
+                    Informations
+                  </SectionTitle>
+                  <Stack spacing={2}>
+                    {plant?.type && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <LocalFloristIcon color="primary" sx={{ fontSize: 20 }} />
+                        <Typography variant="body1">
+                          <strong>Type :</strong> {plant.type}
+                        </Typography>
+                      </Box>
+                    )}
+                    {plant?.bestSeason && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <CalendarMonthIcon color="warning" sx={{ fontSize: 20 }} />
+                        <Typography variant="body1">
+                          <strong>Saison idéale :</strong> {plant.bestSeason}
+                        </Typography>
+                      </Box>
+                    )}
+                    {plant?.sunExposure && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <WbSunnyIcon color="warning" sx={{ fontSize: 20 }} />
+                        <Typography variant="body1">
+                          <strong>Exposition au soleil :</strong> {plant.sunExposure}
+                        </Typography>
+                      </Box>
+                    )}
+                    {plant?.location && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <PlaceOutlinedIcon color="action" sx={{ fontSize: 20 }} />
+                        <Typography variant="body1">
+                          <strong>Emplacement idéal :</strong> {plant.location}
+                        </Typography>
+                      </Box>
+                    )}
+                  </Stack>
+                </Box>
+
+                <Divider flexItem sx={{ opacity: 0.4 }} />
+
                 <Box>
                   <SectionTitle variant="subtitle2">
                     Aperçu
@@ -294,6 +309,13 @@ export default function PlantTemplateDetailsModal({
                   </Box>
                 ) : null}
               </Stack>
+            </Grid>
+
+            {/* Colonne droite : Image */}
+            <Grid item xs={12} md={5}>
+              <HeroWrapper>
+                <HeroImage src={heroSrc} alt={plant?.name || 'Plant illustration'} loading="lazy" />
+              </HeroWrapper>
             </Grid>
           </Grid>
         )}

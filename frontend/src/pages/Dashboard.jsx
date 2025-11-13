@@ -44,6 +44,13 @@ const getPlantImagePath = (imageSlug) => {
 
 const DEFAULT_PLANT_IMAGE = '/images/plantes/default.jpg'
 
+// Fonction pour extraire le nom principal (sans le contenu entre parenthèses)
+const getMainPlantName = (fullName) => {
+  if (!fullName) return ''
+  const match = fullName.match(/^([^(]+)/)
+  return match ? match[1].trim() : fullName
+}
+
 const normalizePlantTemplate = (item) => {
   if (!item) return null
 
@@ -283,15 +290,15 @@ export default function Dashboard() {
                               sx={{
                                 ...dashboardStyles.plantCardTitle,
                                 cursor: 'pointer',
-                                color: PRIMARY_GREEN,
+                                color: '#111827',
                                 '&:hover': {
                                   textDecoration: 'underline',
-                                  color: DARK_GREEN,
+                                  color: '#374151',
                                 },
                               }}
                               onClick={() => handleOpenDetails(plant.id, plant)}
                             >
-                              {plant.name}
+                              {getMainPlantName(plant.name)}
                             </Typography>
                             <Box sx={dashboardStyles.plantCardBadge}>
                               {plant.type}
@@ -369,15 +376,15 @@ export default function Dashboard() {
                               sx={{
                                 ...dashboardStyles.plantCardTitle,
                                 cursor: 'pointer',
-                                color: PRIMARY_GREEN,
+                                color: '#111827',
                                 '&:hover': {
                                   textDecoration: 'underline',
-                                  color: DARK_GREEN,
+                                  color: '#374151',
                                 },
                               }}
                               onClick={() => handleOpenDetails(plant.id, plant)}
                             >
-                              {plant.name}
+                              {getMainPlantName(plant.name)}
                             </Typography>
                             <Box sx={dashboardStyles.plantCardBadge}>
                               {plant.type}
