@@ -113,9 +113,19 @@ class UserPlantation
     #[Groups(['user_plantation:read'])]
     private Collection $suiviSnapshots;
 
+    /**
+     * @var Collection<int, Notification>
+     */
+    #[ORM\OneToMany(mappedBy: 'userPlantation', targetEntity: Notification::class, orphanRemoval: true, cascade: ['persist'])]
+    #[ORM\OrderBy(['dateCreation' => 'DESC'])]
+    #[ApiProperty(writable: false)]
+    #[Groups(['user_plantation:read'])]
+    private Collection $notifications;
+
     public function __construct()
     {
         $this->suiviSnapshots = new ArrayCollection();
+        $this->notifications = new ArrayCollection();
     }
 
     #[ORM\PrePersist]
@@ -274,6 +284,35 @@ class UserPlantation
         if ($this->suiviSnapshots->removeElement($suiviSnapshot)) {
             if ($suiviSnapshot->getUserPlantation() === $this) {
                 $suiviSnapshot->setUserPlantation(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Notification>
+     */
+    public function getNotifications(): Collection
+    {
+        return $this->notifications;
+    }
+
+    public function addNotification(Notification $notification): self
+    {
+        if (!$this->notifications->contains($notification)) {
+            $this->notifications->add($notification);
+            $notification->setUserPlantation($this);
+        }
+
+        return $this;
+    }
+
+    public function removeNotification(Notification $notification): self
+    {
+        if ($this->notifications->removeElement($notification)) {
+            if ($notification->getUserPlantation() === $this) {
+                $notification->setUserPlantation(null);
             }
         }
 

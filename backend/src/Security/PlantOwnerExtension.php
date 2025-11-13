@@ -7,6 +7,7 @@ use ApiPlatform\Metadata\Operation;
 use Doctrine\ORM\QueryBuilder;
 use Symfony\Bundle\SecurityBundle\Security;
 use App\Entity\Plant;
+use App\Entity\Notification;
 use App\Entity\SuiviSnapshot;
 use App\Entity\UserPlantation;
 
@@ -36,6 +37,14 @@ final class PlantOwnerExtension implements QueryCollectionExtensionInterface
         }
 
         if ($resourceClass === SuiviSnapshot::class) {
+            $queryBuilder
+                ->join(sprintf('%s.userPlantation', $rootAlias), 'up')
+                ->andWhere('up.user = :currentUser')
+                ->setParameter('currentUser', $user);
+            return;
+        }
+
+        if ($resourceClass === Notification::class) {
             $queryBuilder
                 ->join(sprintf('%s.userPlantation', $rootAlias), 'up')
                 ->andWhere('up.user = :currentUser')
