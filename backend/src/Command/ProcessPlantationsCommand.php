@@ -7,6 +7,7 @@ use App\Entity\UserPlantation;
 use App\Repository\UserPlantationRepository;
 use App\Service\LifecycleService;
 use App\Service\MeteoService;
+use App\Service\NotificationEngine;
 use App\Service\WateringService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -24,6 +25,7 @@ class ProcessPlantationsCommand extends Command
         private readonly MeteoService $meteoService,
         private readonly LifecycleService $lifecycleService,
         private readonly WateringService $wateringService,
+        private readonly NotificationEngine $notificationEngine,
     ) {
         parent::__construct();
     }
@@ -44,27 +46,34 @@ class ProcessPlantationsCommand extends Command
 
         $today = new \DateTimeImmutable('today');
         $processed = 0;
+        $notificationsCreated = 0;
+        $hasChanges = false;
 
         foreach ($plantations as $plantation) {
             if (!$plantation instanceof UserPlantation) {
                 continue;
             }
 
-            $lastSnapshot = $plantation->getSuiviSnapshots()->first();
-            if ($lastSnapshot instanceof SuiviSnapshot) {
-                $lastDate = $lastSnapshot->getDateSnapshot();
-                if ($lastDate instanceof \DateTimeInterface && $lastDate->format('Y-m-d') === $today->format('Y-m-d')) {
-                    // Déjà calculé aujourd'hui
-                    continue;
-                }
-            } else {
-                $lastSnapshot = null;
-            }
-
             $meteo = $this->meteoService->fetchDailyForecast(
                 (float) $plantation->getGeolocalisationLat(),
                 (float) $plantation->getGeolocalisationLon()
             );
+
+            $lastSnapshot = $plantation->getSuiviSnapshots()->first();
+            $lastSnapshot = $lastSnapshot instanceof SuiviSnapshot ? $lastSnapshot : null;
+
+            $createdForPlantation = $this->notificationEngine->evaluate($plantation, $meteo, $lastSnapshot);
+            $notificationsCreated += $createdForPlantation;
+            if ($createdForPlantation > 0) {
+                $hasChanges = true;
+            }
+
+            if ($lastSnapshot instanceof SuiviSnapshot) {
+                $lastDate = $lastSnapshot->getDateSnapshot();
+                if ($lastDate instanceof \DateTimeInterface && $lastDate->format('Y-m-d') === $today->format('Y-m-d')) {
+                    continue;
+                }
+            }
 
             $lifecycle = $this->lifecycleService->compute($plantation);
             $watering = $this->wateringService->compute($plantation, $meteo, $lastSnapshot);
@@ -89,13 +98,14 @@ class ProcessPlantationsCommand extends Command
             $this->entityManager->persist($snapshot);
             $plantation->addSuiviSnapshot($snapshot);
             $processed++;
+            $hasChanges = true;
         }
 
-        if ($processed > 0) {
+        if ($hasChanges) {
             $this->entityManager->flush();
         }
 
-        $io->success(sprintf('%d plantation(s) traitée(s).', $processed));
+        $io->success(sprintf('%d plantation(s) traitée(s), %d notification(s) générée(s).', $processed, $notificationsCreated));
 
         return Command::SUCCESS;
     }

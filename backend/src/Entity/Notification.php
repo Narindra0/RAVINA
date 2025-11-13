@@ -2,6 +2,9 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\OrderFilter;
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
 use ApiPlatform\Metadata\ApiResource;
 use ApiPlatform\Metadata\GetCollection;
 use ApiPlatform\Metadata\Patch;
@@ -30,6 +33,11 @@ use Symfony\Component\Validator\Constraints as Assert;
         ),
     ]
 )]
+#[ApiFilter(SearchFilter::class, properties: [
+    'statutLecture' => 'exact',
+    'typeConseil' => 'exact',
+])]
+#[ApiFilter(OrderFilter::class, properties: ['dateCreation'], arguments: ['orderParameterName' => 'order'])]
 class Notification
 {
     public const PRIORITY_URGENT = 'URGENT';
@@ -45,7 +53,7 @@ class Notification
     #[ORM\ManyToOne(inversedBy: 'notifications')]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
     #[Assert\NotNull]
-    #[Groups(['notification:read'])]
+    #[Groups(['notification:read', 'user_plantation:read'])]
     private ?UserPlantation $userPlantation = null;
 
     #[ORM\Column(type: 'datetime_immutable')]
