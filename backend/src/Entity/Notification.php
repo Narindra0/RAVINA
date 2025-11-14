@@ -13,6 +13,8 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 
+use App\Entity\User;
+
 #[ORM\Entity(repositoryClass: NotificationRepository::class)]
 #[ORM\Table(name: 'notifications')]
 #[ORM\Index(fields: ['statutLecture'], name: 'idx_notifications_statut_lecture')]
@@ -28,7 +30,7 @@ use Symfony\Component\Validator\Constraints as Assert;
         ),
         new Patch(
             uriTemplate: '/notifications/{id}',
-            security: "object.getUserPlantation().getUser() == user",
+            security: "(object.getUserPlantation() !== null && object.getUserPlantation().getUser() == user) || (object.getUser() !== null && object.getUser() == user)",
             denormalizationContext: ['groups' => ['notification:write']]
         ),
     ]
@@ -51,10 +53,14 @@ class Notification
     private ?int $id = null;
 
     #[ORM\ManyToOne(inversedBy: 'notifications')]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    #[Assert\NotNull]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
     #[Groups(['notification:read', 'user_plantation:read'])]
     private ?UserPlantation $userPlantation = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    #[Groups(['notification:read'])]
+    private ?User $user = null;
 
     #[ORM\Column(type: 'datetime_immutable')]
     #[Assert\NotNull]
@@ -115,6 +121,17 @@ class Notification
     public function setUserPlantation(?UserPlantation $userPlantation): self
     {
         $this->userPlantation = $userPlantation;
+        return $this;
+    }
+
+    public function getUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public function setUser(?User $user): self
+    {
+        $this->user = $user;
         return $this;
     }
 

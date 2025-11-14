@@ -54,6 +54,11 @@ final class UserPlantationProcessor implements ProcessorInterface
         $latitude = (float) $data->getGeolocalisationLat();
         $longitude = (float) $data->getGeolocalisationLon();
 
+        // Confirmation automatique si la date de plantation est aujourd'hui ou passée
+        if ($startDateImmutable && $startDateImmutable <= $today) {
+            $data->setDatePlantationConfirmee(new \DateTimeImmutable());
+        }
+
         if ($startDateImmutable && $today < $startDateImmutable) {
             $this->entityManager->persist($data);
             $this->entityManager->flush();

@@ -46,8 +46,9 @@ final class PlantOwnerExtension implements QueryCollectionExtensionInterface
 
         if ($resourceClass === Notification::class) {
             $queryBuilder
-                ->join(sprintf('%s.userPlantation', $rootAlias), 'up')
-                ->andWhere('up.user = :currentUser')
+                ->leftJoin(sprintf('%s.userPlantation', $rootAlias), 'up')
+                ->leftJoin(sprintf('%s.user', $rootAlias), 'u')
+                ->andWhere('(up.user = :currentUser OR u = :currentUser)')
                 ->setParameter('currentUser', $user);
         }
     }

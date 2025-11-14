@@ -2,7 +2,10 @@
 
 namespace App\Controller;
 
+use App\Entity\Notification;
 use App\Entity\User;
+use App\Repository\UserPlantationRepository;
+use App\Service\WhatsAppNotifier;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -17,6 +20,8 @@ class PhoneVerificationController extends AbstractController
 
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
+        private readonly UserPlantationRepository $userPlantationRepository,
+        private readonly WhatsAppNotifier $whatsAppNotifier,
     ) {
     }
 
@@ -38,8 +43,16 @@ class PhoneVerificationController extends AbstractController
             ], Response::HTTP_BAD_REQUEST);
         }
 
+        // Vérifier si c'est la première fois que l'utilisateur ajoute son numéro
+        $isFirstTime = $user->getNumeroTelephone() === null;
+
         $user->setNumeroTelephone($normalized);
         $this->entityManager->flush();
+
+        // Envoyer une notification de bienvenue si c'est la première fois
+        if ($isFirstTime) {
+            $this->sendWelcomeNotification($user, $normalized);
+        }
 
         return $this->json([
             'status' => 'phone_saved',
@@ -72,6 +85,38 @@ class PhoneVerificationController extends AbstractController
         }
 
         return self::COUNTRY_PREFIX . $digits;
+    }
+
+    private function sendWelcomeNotification(User $user, string $phoneNumber): void
+    {
+        $title = 'Bienvenue chez Ravina !';
+        $message = 'Merci de votre confiance. L\'équipe Ravina vous souhaite la bienvenue et est ravie de vous accompagner dans votre parcours de plantation. Nous sommes à votre disposition pour vous aider à faire pousser vos plantes avec succès.';
+
+        // Envoyer la notification WhatsApp
+        $this->whatsAppNotifier->sendNotification($phoneNumber, $title, $message);
+
+        // Créer une notification en base (toujours)
+        $notification = new Notification();
+        $notification->setUser($user);
+        $notification->setTypeConseil('BIENVENUE');
+        $notification->setNiveauPriorite(Notification::PRIORITY_INFO);
+        $notification->setTitre($title);
+        $notification->setMessageDetaille($message);
+        $notification->setStatutLecture(false);
+
+        // Lier à la première plantation si elle existe
+        $firstPlantation = $this->userPlantationRepository->findOneBy(
+            ['user' => $user],
+            ['createdAt' => 'ASC']
+        );
+
+        if ($firstPlantation !== null) {
+            $notification->setUserPlantation($firstPlantation);
+            $firstPlantation->addNotification($notification);
+        }
+
+        $this->entityManager->persist($notification);
+        $this->entityManager->flush();
     }
 }
 
