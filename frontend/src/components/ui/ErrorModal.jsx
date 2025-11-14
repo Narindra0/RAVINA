@@ -25,14 +25,15 @@ export function ErrorModal({ open, onClose, title, message, severity = 'error' }
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth="sm"
-      fullWidth
+      maxWidth="xs"
+      fullWidth={false}
       PaperProps={{
         sx: {
           borderRadius: '20px',
           boxShadow: 'none',
           overflow: 'hidden',
-          maxWidth: '90%',
+          maxWidth: '320px',
+          width: '100%',
           margin: 'auto',
         },
       }}
@@ -83,21 +84,21 @@ export function ErrorModal({ open, onClose, title, message, severity = 'error' }
               flexDirection: 'column',
               alignItems: 'center',
               textAlign: 'center',
-              p: 4,
-              pt: 5,
+              p: 3,
+              pt: 4,
             }}
           >
             {/* Icône d'erreur */}
             <Box
               sx={{
-                width: 64,
-                height: 64,
+                width: 52,
+                height: 52,
                 borderRadius: '50%',
                 backgroundColor: `${getIconColor()}15`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                mb: 2.5,
+                mb: 2,
                 animation: 'pulse 0.6s ease-out',
                 '@keyframes pulse': {
                   '0%': {
@@ -116,7 +117,7 @@ export function ErrorModal({ open, onClose, title, message, severity = 'error' }
             >
               <ErrorOutline
                 sx={{
-                  fontSize: 36,
+                  fontSize: 28,
                   color: getIconColor(),
                 }}
               />
@@ -128,9 +129,9 @@ export function ErrorModal({ open, onClose, title, message, severity = 'error' }
               component="div"
               sx={{
                 fontWeight: 700,
-                fontSize: '1.25rem',
+                fontSize: '1.1rem',
                 color: '#1d1d1f',
-                mb: 1,
+                mb: 0.75,
                 lineHeight: 1.3,
               }}
             >
@@ -142,10 +143,10 @@ export function ErrorModal({ open, onClose, title, message, severity = 'error' }
               variant="body1"
               sx={{
                 color: '#6e6e73',
-                fontSize: '0.9375rem',
+                fontSize: '0.875rem',
                 lineHeight: 1.5,
-                maxWidth: '85%',
-                mb: 3,
+                maxWidth: '90%',
+                mb: 2.5,
               }}
             >
               {message}
@@ -160,13 +161,13 @@ export function ErrorModal({ open, onClose, title, message, severity = 'error' }
                 color: 'white',
                 border: 'none',
                 borderRadius: '12px',
-                px: 4,
-                py: 1.25,
-                fontSize: '0.9375rem',
+                px: 3,
+                py: 1,
+                fontSize: '0.875rem',
                 fontWeight: 600,
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                minWidth: '120px',
+                minWidth: '100px',
                 '&:hover': {
                   backgroundColor: severity === 'error' ? '#d70015' : '#e68900',
                   transform: 'scale(1.02)',
@@ -187,19 +188,19 @@ export function ErrorModal({ open, onClose, title, message, severity = 'error' }
           size="small"
           sx={{
             position: 'absolute',
-            top: 12,
-            right: 12,
+            top: 10,
+            right: 10,
             color: '#8e8e93',
             backgroundColor: 'rgba(0, 0, 0, 0.04)',
-            width: 32,
-            height: 32,
+            width: 28,
+            height: 28,
             '&:hover': {
               backgroundColor: 'rgba(0, 0, 0, 0.08)',
               color: '#1d1d1f',
             },
           }}
         >
-          <Close sx={{ fontSize: 18 }} />
+          <Close sx={{ fontSize: 16 }} />
         </IconButton>
       </Box>
     </Dialog>
