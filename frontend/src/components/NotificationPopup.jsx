@@ -24,16 +24,20 @@ export default function NotificationPopup({ notification, onAcknowledge, onClose
   const { id, titre, messageDetaille, niveauPriorite } = notification;
   const severity = PRIORITY_SEVERITY[niveauPriorite] || 'info';
   const icon = PRIORITY_ICON[niveauPriorite] || PRIORITY_ICON.INFO;
-  const autoHideDuration = niveauPriorite === 'URGENT' ? null : 8000;
+  // La notification s'affiche 3 secondes puis se ferme automatiquement sans marquer comme lue
+  const autoHideDuration = 3000;
 
   const handleClose = (_, reason) => {
     if (reason === 'clickaway') {
       return;
     }
-    onClose?.(id);
+    // Fermeture automatique après 3s : on ferme juste la popup sans marquer comme lue
+    // onClose est appelé avec null pour indiquer qu'on ne marque pas comme lue
+    onClose?.(null);
   };
 
-  const handleAcknowledge = () => {
+  const handleMarkAsRead = () => {
+    // L'utilisateur clique explicitement sur "Marquer comme lu"
     onAcknowledge?.(id);
   };
 
@@ -49,8 +53,8 @@ export default function NotificationPopup({ notification, onAcknowledge, onClose
         icon={icon}
         sx={{ alignItems: 'flex-start', minWidth: { xs: 'auto', md: 360 } }}
         action={
-          <Button color="inherit" size="small" onClick={handleAcknowledge}>
-            Compris
+          <Button color="inherit" size="small" onClick={handleMarkAsRead}>
+            Marquer comme lu
           </Button>
         }
       >

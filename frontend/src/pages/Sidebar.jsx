@@ -129,11 +129,13 @@ export default function Sidebar({ user, isMobileOpen, onClose }) {
   }, [notifications, activeNotification]);
 
   const handleNotificationDismiss = async (id) => {
+    // Si id est null, c'est une fermeture automatique (après 3s) : on ne marque pas comme lue
     if (!id) {
       setActiveNotification(null);
       return;
     }
 
+    // Sinon, l'utilisateur a cliqué sur "Marquer comme lu" : on marque comme lue
     try {
       await markAsRead(id);
       await refresh();
@@ -145,7 +147,14 @@ export default function Sidebar({ user, isMobileOpen, onClose }) {
   };
 
   const handleLogout = () => {
+    // Nettoyer le token d'authentification
     authStore.clearToken()
+    
+    // Nettoyer toute autre donnée en session si nécessaire
+    // (le clearToken nettoie déjà le phone verification deferral)
+    
+    // Rediriger vers la page de login avec un rechargement complet
+    // pour s'assurer que toutes les données sont bien réinitialisées
     window.location.href = '/login'
   }
   

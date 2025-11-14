@@ -8,6 +8,7 @@ import { AuthLayout } from '../components/auth/AuthLayout';
 import { VisualSection } from '../components/auth/VisualSection';
 import { EmailField } from '../components/ui/EmailField';
 import { PasswordField } from '../components/ui/PasswordField';
+import { ErrorModal } from '../components/ui/ErrorModal';
 import { authStyles } from '../styles/authStyles';
 import logoImageSrc from '../assets/logo-texte.png';
 
@@ -21,6 +22,10 @@ export default function LoginPage() {
         email, password, setPassword, loading, emailError,
         handleEmailChange, handleEmailBlur, handleSubmit,
         showPassword, setShowPassword, showSnackbar,
+        errorModalOpen,
+        errorModalTitle,
+        errorModalMessage,
+        setErrorModalOpen,
         ...snackbarProps 
     } = useLoginForm();
 
@@ -50,6 +55,7 @@ export default function LoginPage() {
     }, [navigate, showSnackbar]);
 
     return (
+        <>
         <AuthLayout visualSection={visual} snackbarProps={snackbarProps}>
             <Box sx={authStyles.header}>
                 <Box component="img" src={logoImageSrc} alt="OrientMada Logo" sx={authStyles.logoImage} />
@@ -128,5 +134,14 @@ export default function LoginPage() {
                 © 2024 OrientMada. Tous droits réservés.
             </Typography>
         </AuthLayout>
+
+        {/* Modal d'erreur */}
+        <ErrorModal
+            open={errorModalOpen}
+            onClose={() => setErrorModalOpen(false)}
+            title={errorModalTitle}
+            message={errorModalMessage}
+        />
+    </>
     );
 }
