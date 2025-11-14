@@ -44,10 +44,19 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?string $password = null;
 
     // --------------------------
-    // 📞 Numéro de téléphone
+    // 📞 Numéro de téléphone + vérification
     // --------------------------
     #[ORM\Column(length: 20, nullable: true)]
     private ?string $numeroTelephone = null;
+
+    #[ORM\Column(length: 6, nullable: true)]
+    private ?string $phoneVerificationCode = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $phoneVerificationExpiresAt = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $phoneVerifiedAt = null;
 
     // --------------------------
     // 🌱 Relation avec Plant
@@ -133,6 +142,44 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
         $this->numeroTelephone = $numeroTelephone;
         return $this;
+    }
+
+    public function getPhoneVerificationCode(): ?string
+    {
+        return $this->phoneVerificationCode;
+    }
+
+    public function setPhoneVerificationCode(?string $phoneVerificationCode): static
+    {
+        $this->phoneVerificationCode = $phoneVerificationCode;
+        return $this;
+    }
+
+    public function getPhoneVerificationExpiresAt(): ?\DateTimeImmutable
+    {
+        return $this->phoneVerificationExpiresAt;
+    }
+
+    public function setPhoneVerificationExpiresAt(?\DateTimeImmutable $phoneVerificationExpiresAt): static
+    {
+        $this->phoneVerificationExpiresAt = $phoneVerificationExpiresAt;
+        return $this;
+    }
+
+    public function getPhoneVerifiedAt(): ?\DateTimeImmutable
+    {
+        return $this->phoneVerifiedAt;
+    }
+
+    public function setPhoneVerifiedAt(?\DateTimeImmutable $phoneVerifiedAt): static
+    {
+        $this->phoneVerifiedAt = $phoneVerifiedAt;
+        return $this;
+    }
+
+    public function isPhoneVerified(): bool
+    {
+        return $this->phoneVerifiedAt !== null;
     }
 
     public function eraseCredentials(): void

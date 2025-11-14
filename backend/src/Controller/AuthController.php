@@ -52,6 +52,11 @@ class AuthController extends AbstractController
         return $this->json([
             'message' => 'Connexion réussie',
             'token' => $token,
+            'user' => [
+                'email' => $user->getEmail(),
+                'numeroTelephone' => $user->getNumeroTelephone(),
+                'phoneVerified' => $user->isPhoneVerified(),
+            ],
         ]);
     }
 
