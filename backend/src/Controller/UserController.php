@@ -2,11 +2,11 @@
 
 namespace App\Controller;
 
-use App\Entity\User;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 class UserController extends AbstractController
 {
@@ -16,13 +16,13 @@ class UserController extends AbstractController
      */
     #[Route('/api/user', name: 'api_user', methods: ['GET'])]
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
-    public function getUserInfo(User $user): JsonResponse
+    public function getUserInfo(UserInterface $user): JsonResponse
     {
         return $this->json([
             'email' => $user->getUserIdentifier(),
-            'numeroTelephone' => $user->getNumeroTelephone(),
-            'phoneVerified' => $user->isPhoneVerified(),
-            'phoneVerificationRequired' => !$user->isPhoneVerified(),
+            'numeroTelephone' => method_exists($user, 'getNumeroTelephone') ? $user->getNumeroTelephone() : null,
+            'phoneVerified' => method_exists($user, 'isPhoneVerified') ? $user->isPhoneVerified() : false,
+            'phoneVerificationRequired' => method_exists($user, 'isPhoneVerified') ? !$user->isPhoneVerified() : true,
         ]);
     }
 }
