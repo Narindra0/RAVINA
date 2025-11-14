@@ -28,7 +28,11 @@ class NotificationEngine
         $startDateImmutable = $startDate instanceof \DateTimeInterface ? $this->toImmutable($startDate) : null;
 
         if ($startDateImmutable) {
-            $created += $this->handleUpcomingPlanting($plantation, $today, $startDateImmutable);
+            // Ne pas envoyer de notifications si la plantation est déjà confirmée
+            if (!$plantation->isPlantationConfirmee()) {
+                $created += $this->handleUpcomingPlanting($plantation, $today, $startDateImmutable);
+                $created += $this->handlePlantingReminder($plantation, $today, $startDateImmutable);
+            }
 
             if ($today < $startDateImmutable) {
                 return $created;
@@ -96,25 +100,93 @@ class NotificationEngine
         }
 
         $daysUntilStart = (int) $today->diff($startDate)->days;
-        if ($daysUntilStart < 2 || $daysUntilStart > 3) {
+        $plantName = $this->resolvePlantName($plantation);
+        $created = 0;
+
+        // Notification 2 jours avant
+        if ($daysUntilStart === 2) {
+            $since = $today->sub(new \DateInterval('P1D'));
+            if (!$this->notificationRepository->hasRecentNotification($plantation, 'RAPPEL_PLANTATION_2J', $since)) {
+                $title = '2 jours avant plantation, préparez-vous';
+                $message = sprintf(
+                    '2 jours avant plantation, préparez-vous. Votre %s est prévue pour le %s.',
+                    $plantName,
+                    $startDate->format('d/m/Y')
+                );
+
+                $this->createNotification(
+                    $plantation,
+                    'RAPPEL_PLANTATION_2J',
+                    Notification::PRIORITY_INFO,
+                    $title,
+                    $message
+                );
+                $created++;
+            }
+        }
+
+        // Notification 1 jour avant
+        if ($daysUntilStart === 1) {
+            $since = $today->sub(new \DateInterval('P1D'));
+            if (!$this->notificationRepository->hasRecentNotification($plantation, 'RAPPEL_PLANTATION_1J', $since)) {
+                $title = sprintf('Plantation de la %s prévue pour demain, préparez-vous', $plantName);
+                $message = sprintf(
+                    'Plantation de la %s prévue pour demain, préparez-vous.',
+                    $plantName
+                );
+
+                $this->createNotification(
+                    $plantation,
+                    'RAPPEL_PLANTATION_1J',
+                    Notification::PRIORITY_IMPORTANT,
+                    $title,
+                    $message
+                );
+                $created++;
+            }
+        }
+
+        return $created;
+    }
+
+    /**
+     * Gère les rappels en cas de retard de plantation
+     */
+    private function handlePlantingReminder(UserPlantation $plantation, \DateTimeImmutable $today, \DateTimeImmutable $startDate): int
+    {
+        // Ne pas envoyer de rappel si la plantation est déjà confirmée
+        if ($plantation->isPlantationConfirmee()) {
             return 0;
         }
 
-        $since = $today->sub(new \DateInterval('P5D'));
-        if ($this->notificationRepository->hasRecentNotification($plantation, 'PLANTATION_IMMINENTE', $since)) {
+        // Ne pas envoyer de rappel si la date n'est pas encore passée
+        if ($startDate > $today) {
             return 0;
         }
 
-        $title = sprintf('Plantation imminente pour %s', $this->resolvePlantName($plantation));
+        $daysLate = (int) $startDate->diff($today)->days;
+        if ($daysLate <= 0) {
+            return 0;
+        }
+
+        // Envoyer un rappel tous les jours après la date prévue
+        $since = $today->sub(new \DateInterval('P1D'));
+        if ($this->notificationRepository->hasRecentNotification($plantation, 'RAPPEL_PLANTATION_RETARD', $since)) {
+            return 0;
+        }
+
+        $plantName = $this->resolvePlantName($plantation);
+        $title = sprintf('Rappel : plantation de la %s en retard', $plantName);
         $message = sprintf(
-            "Votre plantation est prévue le %s. Préparez le matériel et vérifiez vos conditions de culture.",
-            $startDate->format('d/m/Y')
+            'Plantation prévue, il y a %d jour%s... Vous avez oublié ? N\'oubliez pas de confirmer votre plantation.',
+            $daysLate,
+            $daysLate > 1 ? 's' : ''
         );
 
         $this->createNotification(
             $plantation,
-            'PLANTATION_IMMINENTE',
-            Notification::PRIORITY_INFO,
+            'RAPPEL_PLANTATION_RETARD',
+            Notification::PRIORITY_IMPORTANT,
             $title,
             $message
         );

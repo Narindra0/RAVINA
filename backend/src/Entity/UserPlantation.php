@@ -75,6 +75,10 @@ class UserPlantation
     #[Groups(['user_plantation:read', 'user_plantation:write'])]
     private ?\DateTimeInterface $datePlantation = null;
 
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    #[Groups(['user_plantation:read'])]
+    private ?\DateTimeImmutable $datePlantationConfirmee = null;
+
     #[ORM\Column(length: 50)]
     #[Assert\NotBlank]
     #[Assert\Length(max: 50)]
@@ -187,6 +191,23 @@ class UserPlantation
     {
         $this->datePlantation = $datePlantation;
         return $this;
+    }
+
+    public function getDatePlantationConfirmee(): ?\DateTimeImmutable
+    {
+        return $this->datePlantationConfirmee;
+    }
+
+    public function setDatePlantationConfirmee(?\DateTimeImmutable $datePlantationConfirmee): self
+    {
+        $this->datePlantationConfirmee = $datePlantationConfirmee;
+        $this->touch();
+        return $this;
+    }
+
+    public function isPlantationConfirmee(): bool
+    {
+        return $this->datePlantationConfirmee !== null;
     }
 
     public function getLocalisation(): ?string

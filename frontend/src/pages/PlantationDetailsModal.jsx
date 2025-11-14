@@ -57,6 +57,23 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
     }
   }
 
+  const handleConfirmPlanting = async () => {
+    if (!plantation?.id) return
+    setActionLoading(true)
+    setActionError('')
+    try {
+      await api.post(`/plantations/${plantation.id}/confirm-planting`, {}, {
+        headers: { Accept: 'application/ld+json' }
+      })
+      // On laisse le parent recharger la liste via onClose() + éventuel rafraîchissement
+      onClose?.()
+    } catch (e) {
+      setActionError("Impossible de confirmer la plantation.")
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   const handleDelete = async () => {
     if (!plantation?.id) return
     if (!confirm('Supprimer cette plantation ? Cette action est irréversible.')) return
@@ -81,6 +98,14 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
   const startDate = plantation.datePlantation
   const daysUntilPlanting = startDate ? daysUntil(startDate) : null
   const isUpcomingPlantation = daysUntilPlanting !== null && daysUntilPlanting > 0
+  const isPlantationConfirmed = plantation.datePlantationConfirmee !== null && plantation.datePlantationConfirmee !== undefined
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const plantingDate = startDate ? new Date(startDate) : null
+  if (plantingDate) {
+    plantingDate.setHours(0, 0, 0, 0)
+  }
+  const canConfirmPlanting = !isPlantationConfirmed && plantingDate && plantingDate <= today
   const rawSnapshots = Array.isArray(plantation.suiviSnapshots) ? plantation.suiviSnapshots : []
   const snapshot = isUpcomingPlantation ? null : rawSnapshots[0]
   const progression = snapshot ? parseFloat(snapshot.progressionPourcentage) : 0
@@ -277,14 +302,25 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
         >
           Supprimer
         </Button>
-        <Button
-          onClick={handleWater}
-          variant="contained"
-          disabled={actionLoading || isUpcomingPlantation}
-          sx={{ backgroundColor: '#10b981', ':hover': { backgroundColor: '#059669' } }}
-        >
-          {isUpcomingPlantation ? 'Disponible après plantation' : actionLoading ? '...' : "J'ai arrosé"}
-        </Button>
+        {canConfirmPlanting ? (
+          <Button
+            onClick={handleConfirmPlanting}
+            variant="contained"
+            disabled={actionLoading}
+            sx={{ backgroundColor: '#10b981', ':hover': { backgroundColor: '#059669' } }}
+          >
+            {actionLoading ? '...' : "J'ai planté"}
+          </Button>
+        ) : (
+          <Button
+            onClick={handleWater}
+            variant="contained"
+            disabled={actionLoading || isUpcomingPlantation}
+            sx={{ backgroundColor: '#10b981', ':hover': { backgroundColor: '#059669' } }}
+          >
+            {isUpcomingPlantation ? 'Disponible après plantation' : actionLoading ? '...' : "J'ai arrosé"}
+          </Button>
+        )}
       </Box>
     </Dialog>
   )

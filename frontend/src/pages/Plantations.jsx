@@ -210,6 +210,15 @@ export default function Plantations() {
             const startDate = plantation.datePlantation;
             const daysUntilPlanting = startDate ? daysUntil(startDate) : null;
             const isUpcomingPlantation = daysUntilPlanting !== null && daysUntilPlanting > 0;
+            const isPlantationConfirmed = plantation.datePlantationConfirmee !== null && plantation.datePlantationConfirmee !== undefined;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const plantingDate = startDate ? new Date(startDate) : null;
+            if (plantingDate) {
+              plantingDate.setHours(0, 0, 0, 0);
+            }
+            const isPlantingOverdue = !isPlantationConfirmed && plantingDate && plantingDate < today;
+            const daysLate = isPlantingOverdue && plantingDate ? Math.floor((today - plantingDate) / (1000 * 60 * 60 * 24)) : 0;
             const startDateLabel = startDate
               ? new Date(startDate).toLocaleDateString('fr-FR', {
                   year: 'numeric',
@@ -264,6 +273,22 @@ export default function Plantations() {
                       </p>
                       {startDateLabel && (
                         <p className="watering-subtext">
+                          {`Date prévue : ${startDateLabel}`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {isPlantingOverdue && (
+                  <div className="plantation-watering-section" style={{ backgroundColor: '#fef3c7', padding: '12px', borderRadius: '8px', marginBottom: '12px' }}>
+                    <CalendarMonth className="watering-icon" style={{ color: '#f59e0b' }} />
+                    <div className="watering-texts">
+                      <p className="watering-text" style={{ color: '#92400e', fontWeight: 600 }}>
+                        {`Plantation prévue, il y a ${daysLate} jour${daysLate > 1 ? 's' : ''}... Vous avez oublié ?`}
+                      </p>
+                      {startDateLabel && (
+                        <p className="watering-subtext" style={{ color: '#78350f' }}>
                           {`Date prévue : ${startDateLabel}`}
                         </p>
                       )}
