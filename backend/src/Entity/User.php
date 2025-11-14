@@ -44,6 +44,12 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     private ?string $password = null;
 
     // --------------------------
+    // 📞 Numéro de téléphone
+    // --------------------------
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $numeroTelephone = null;
+
+    // --------------------------
     // 🌱 Relation avec Plant
     // --------------------------
     /**
@@ -115,6 +121,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPassword(string $password): static
     {
         $this->password = $password;
+        return $this;
+    }
+
+    public function getNumeroTelephone(): ?string
+    {
+        return $this->numeroTelephone;
+    }
+
+    public function setNumeroTelephone(?string $numeroTelephone): static
+    {
+        $this->numeroTelephone = $numeroTelephone;
         return $this;
     }
 
