@@ -6,6 +6,14 @@
 parameters:
     env(METEO_BASE_URL): 'https://api.open-meteo.com'
     meteo.base_url: '%env(string:METEO_BASE_URL)%'
+    env(WHATSAPP_API_BASE_URI): 'https://graph.facebook.com'
+    env(WHATSAPP_API_VERSION): 'v19.0'
+    env(WHATSAPP_ACCESS_TOKEN): ''
+    env(WHATSAPP_PHONE_NUMBER_ID): ''
+    env(WHATSAPP_TEMPLATE_NAME): ''
+    env(WHATSAPP_TEMPLATE_LANGUAGE): 'fr'
+    env(WHATSAPP_ENABLED): 'false'
+    env(WHATSAPP_VERIFY_TOKEN): ''
 
 services:
     # default configuration for services in *this* file
@@ -42,6 +50,16 @@ services:
     App\Service\MeteoService:
         arguments:
             $meteoBaseUrl: '%meteo.base_url%'
+
+    App\Service\WhatsAppNotifier:
+        arguments:
+            $accessToken: '%env(string:WHATSAPP_ACCESS_TOKEN)%'
+            $phoneNumberId: '%env(string:WHATSAPP_PHONE_NUMBER_ID)%'
+            $apiBaseUrl: '%env(string:WHATSAPP_API_BASE_URI)%'
+            $apiVersion: '%env(string:WHATSAPP_API_VERSION)%'
+            $templateName: '%env(string:WHATSAPP_TEMPLATE_NAME)%'
+            $templateLanguage: '%env(string:WHATSAPP_TEMPLATE_LANGUAGE)%'
+            $enabled: '%env(bool:WHATSAPP_ENABLED)%'
 
     App\Security\PlantOwnerExtension:
         tags: ['api_platform.doctrine.orm.query_extension.collection']

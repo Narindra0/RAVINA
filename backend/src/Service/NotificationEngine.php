@@ -13,6 +13,7 @@ class NotificationEngine
     public function __construct(
         private readonly NotificationRepository $notificationRepository,
         private readonly EntityManagerInterface $entityManager,
+        private readonly WhatsAppNotifier $whatsAppNotifier,
     ) {
     }
 
@@ -538,8 +539,19 @@ class NotificationEngine
 
         $plantation->addNotification($notification);
         $this->entityManager->persist($notification);
+        $this->dispatchWhatsApp($plantation, $title, $message);
 
         return $notification;
+    }
+
+    private function dispatchWhatsApp(UserPlantation $plantation, string $title, string $message): void
+    {
+        $user = $plantation->getUser();
+        if (!$user) {
+            return;
+        }
+
+        $this->whatsAppNotifier->sendNotification($user->getNumeroTelephone(), $title, $message);
     }
 
     /**
