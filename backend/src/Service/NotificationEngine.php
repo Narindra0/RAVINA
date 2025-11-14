@@ -45,6 +45,8 @@ class NotificationEngine
         $created += $this->handleExcessRainWarning($plantation, $today, $daily);
         $created += $this->handleMissedWatering($plantation, $today, $lastSnapshot);
         $created += $this->handleFertilizationReminder($plantation, $today);
+        $created += $this->handleWateringToday($plantation, $today, $lastSnapshot);
+        $created += $this->handleWateringReminder($plantation, $lastSnapshot);
 
         return $created;
     }
@@ -389,6 +391,129 @@ class NotificationEngine
             $plantation,
             'RAPPEL_FERTILISATION',
             Notification::PRIORITY_INFO,
+            $title,
+            $message
+        );
+
+        return 1;
+    }
+
+    /**
+     * Notification matinale : "Arrosage du {nom} aujourd'hui"
+     * Envoyée le matin (avant 12h00) si l'arrosage est prévu aujourd'hui et qu'il n'a pas encore été fait
+     */
+    private function handleWateringToday(UserPlantation $plantation, \DateTimeImmutable $today, ?SuiviSnapshot $lastSnapshot): int
+    {
+        if (!$lastSnapshot) {
+            return 0;
+        }
+
+        $recommendedDate = $lastSnapshot->getArrosageRecoDate();
+        if (!$recommendedDate instanceof \DateTimeInterface) {
+            return 0;
+        }
+
+        $recommendedDate = $this->toImmutable($recommendedDate);
+
+        // Vérifier si l'arrosage est prévu aujourd'hui
+        if ($recommendedDate->format('Y-m-d') !== $today->format('Y-m-d')) {
+            return 0;
+        }
+
+        // Vérifier qu'aucun arrosage manuel n'a déjà été fait aujourd'hui
+        if ($this->hasManualWateringSince($plantation, $today)) {
+            return 0;
+        }
+
+        // Vérifier qu'on n'a pas déjà envoyé cette notification aujourd'hui
+        $since = $today->sub(new \DateInterval('P1D'));
+        if ($this->notificationRepository->hasRecentNotification($plantation, 'RAPPEL_ARROSAGE_AUJOURD_HUI', $since)) {
+            return 0;
+        }
+
+        // Vérifier l'heure : on envoie seulement le matin (avant 12h00)
+        $now = new \DateTimeImmutable();
+        $currentHour = (int) $now->format('H');
+        if ($currentHour >= 12) {
+            return 0; // Trop tard, on ne l'envoie que le matin
+        }
+
+        $plantName = $this->resolvePlantName($plantation);
+        $title = sprintf('Arrosage du %s aujourd\'hui', $plantName);
+        $message = sprintf(
+            'N\'oubliez pas d\'arroser votre %s aujourd\'hui.',
+            $plantName
+        );
+
+        $this->createNotification(
+            $plantation,
+            'RAPPEL_ARROSAGE_AUJOURD_HUI',
+            Notification::PRIORITY_IMPORTANT,
+            $title,
+            $message
+        );
+
+        return 1;
+    }
+
+    /**
+     * Rappel en fin d'après-midi : "N'oubliez pas d'arroser votre {nom}"
+     * Envoyée entre 15h30 et 17h30 si l'arrosage était prévu aujourd'hui et n'a pas encore été fait
+     */
+    private function handleWateringReminder(UserPlantation $plantation, ?SuiviSnapshot $lastSnapshot): int
+    {
+        if (!$lastSnapshot) {
+            return 0;
+        }
+
+        $recommendedDate = $lastSnapshot->getArrosageRecoDate();
+        if (!$recommendedDate instanceof \DateTimeInterface) {
+            return 0;
+        }
+
+        $recommendedDate = $this->toImmutable($recommendedDate);
+        $now = new \DateTimeImmutable();
+        $today = new \DateTimeImmutable('today');
+
+        // Vérifier si l'arrosage est prévu aujourd'hui
+        if ($recommendedDate->format('Y-m-d') !== $today->format('Y-m-d')) {
+            return 0;
+        }
+
+        // Vérifier qu'aucun arrosage manuel n'a déjà été fait aujourd'hui
+        if ($this->hasManualWateringSince($plantation, $today)) {
+            return 0;
+        }
+
+        // Vérifier l'heure : on envoie seulement entre 15h30 et 17h30
+        $currentHour = (int) $now->format('H');
+        $currentMinute = (int) $now->format('i');
+
+        if ($currentHour < 15 || ($currentHour === 15 && $currentMinute < 30)) {
+            return 0; // Trop tôt, on attend 15h30
+        }
+
+        if ($currentHour > 17 || ($currentHour === 17 && $currentMinute > 30)) {
+            return 0; // Trop tard, on ne l'envoie qu'entre 15h30 et 17h30
+        }
+
+        // Vérifier qu'on n'a pas déjà envoyé ce rappel aujourd'hui
+        $since = $today->sub(new \DateInterval('P1D'));
+        if ($this->notificationRepository->hasRecentNotification($plantation, 'RAPPEL_ARROSAGE_SOIR', $since)) {
+            return 0;
+        }
+
+        $plantName = $this->resolvePlantName($plantation);
+        $title = sprintf('N\'oubliez pas d\'arroser votre %s', $plantName);
+        $message = sprintf(
+            'Votre %s doit être arrosé aujourd\'hui. Pensez à le faire si ce n\'est pas déjà fait.',
+            $plantName
+        );
+
+        $this->createNotification(
+            $plantation,
+            'RAPPEL_ARROSAGE_SOIR',
+            Notification::PRIORITY_IMPORTANT,
             $title,
             $message
         );
