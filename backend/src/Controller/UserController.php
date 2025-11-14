@@ -18,11 +18,14 @@ class UserController extends AbstractController
     #[IsGranted('IS_AUTHENTICATED_FULLY')]
     public function getUserInfo(UserInterface $user): JsonResponse
     {
+        $numeroTelephone = method_exists($user, 'getNumeroTelephone') ? $user->getNumeroTelephone() : null;
+        $phoneVerified = !empty($numeroTelephone);
+        
         return $this->json([
             'email' => $user->getUserIdentifier(),
-            'numeroTelephone' => method_exists($user, 'getNumeroTelephone') ? $user->getNumeroTelephone() : null,
-            'phoneVerified' => method_exists($user, 'isPhoneVerified') ? $user->isPhoneVerified() : false,
-            'phoneVerificationRequired' => method_exists($user, 'isPhoneVerified') ? !$user->isPhoneVerified() : true,
+            'numeroTelephone' => $numeroTelephone,
+            'phoneVerified' => $phoneVerified,
+            'phoneVerificationRequired' => !$phoneVerified,
         ]);
     }
 }

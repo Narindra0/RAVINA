@@ -49,13 +49,16 @@ class AuthController extends AbstractController
 
         $token = $this->jwtManager->create($user);
 
+        $numeroTelephone = $user->getNumeroTelephone();
+        $phoneVerified = !empty($numeroTelephone);
+
         return $this->json([
             'message' => 'Connexion réussie',
             'token' => $token,
             'user' => [
                 'email' => $user->getEmail(),
-                'numeroTelephone' => $user->getNumeroTelephone(),
-                'phoneVerified' => $user->isPhoneVerified(),
+                'numeroTelephone' => $numeroTelephone,
+                'phoneVerified' => $phoneVerified,
             ],
         ]);
     }

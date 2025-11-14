@@ -13,13 +13,13 @@ import {
   CircularProgress,
   Stack,
 } from '@mui/material'
+import { Phone as PhoneIcon } from '@mui/icons-material'
 
 import { api } from '../../lib/axios'
 import { useSnackbar } from '../../hooks/useSnackbar'
 import { SnackbarAlert } from '../ui/SnackbarAlert'
 
 const COUNTRY_PREFIX = '+261'
-const CODE_LENGTH = 6
 const SUFFIX_LENGTH = 9
 
 const sanitizeDigits = (value = '') => value.replace(/\D+/g, '')
@@ -49,31 +49,18 @@ export function PhoneVerificationModal({
   onStatusRefresh,
 }) {
   const [phoneSuffix, setPhoneSuffix] = useState('')
-  const [step, setStep] = useState('collect')
-  const [code, setCode] = useState('')
-  const [sending, setSending] = useState(false)
-  const [confirming, setConfirming] = useState(false)
-  const [helperMessage, setHelperMessage] = useState('')
+  const [saving, setSaving] = useState(false)
 
   const { showSnackbar, ...snackbarProps } = useSnackbar()
 
   const isPhoneValid = useMemo(() => sanitizeDigits(phoneSuffix).length === SUFFIX_LENGTH, [phoneSuffix])
-  const isCodeComplete = useMemo(() => code.length === CODE_LENGTH, [code])
-
-  const resetState = () => {
-    setStep('collect')
-    setCode('')
-    setHelperMessage('')
-  }
 
   useEffect(() => {
     if (!open) {
-      resetState()
       setPhoneSuffix('')
       return
     }
     setPhoneSuffix(extractSuffix(defaultPhoneNumber))
-    resetState()
   }, [open, defaultPhoneNumber])
 
   const handleDialogClose = (_, reason) => {
@@ -88,76 +75,31 @@ export function PhoneVerificationModal({
     setPhoneSuffix(digits)
   }
 
-  const handleCodeChange = (event) => {
-    const digits = sanitizeDigits(event.target.value).slice(0, CODE_LENGTH)
-    setCode(digits)
-  }
-
-  const handleSendCode = async () => {
+  const handleSave = async () => {
     if (!isPhoneValid) {
       return
     }
 
-    setSending(true)
-    setHelperMessage('')
+    setSaving(true)
 
     try {
-      const response = await api.post('/phone/send-code', {
+      await api.post('/phone/save', {
         phoneSuffix: sanitizeDigits(phoneSuffix),
       })
-
-      setStep('confirm')
-      setHelperMessage("Nous venons d'envoyer un code à six chiffres sur votre WhatsApp.")
-      showSnackbar('📨 Code envoyé via WhatsApp.', 'success')
-      onStatusRefresh?.(response.data)
-    } catch (error) {
-      const message = error.response?.data?.error || "Impossible d'envoyer le code pour le moment."
-      showSnackbar(message, 'error')
-    } finally {
-      setSending(false)
-    }
-  }
-
-  const handleConfirmCode = async () => {
-    if (!isCodeComplete) {
-      return
-    }
-
-    setConfirming(true)
-
-    try {
-      await api.post('/phone/confirm-code', { code })
-      showSnackbar('✅ Numéro confirmé. Merci !', 'success')
+      showSnackbar('✅ Numéro enregistré avec succès !', 'success')
       onStatusRefresh?.()
       onVerified?.()
-      resetState()
     } catch (error) {
-      const message = error.response?.data?.error || 'Code invalide. Merci de réessayer.'
+      const message = error.response?.data?.error || "Impossible d'enregistrer le numéro pour le moment."
       showSnackbar(message, 'error')
     } finally {
-      setConfirming(false)
+      setSaving(false)
     }
   }
 
   const handleDefer = () => {
-    resetState()
     onDefer?.()
   }
-
-  const handleEditNumber = () => {
-    if (step !== 'confirm') {
-      return
-    }
-    setStep('collect')
-    setCode('')
-    setHelperMessage('')
-  }
-
-  const primaryActionDisabled =
-    (step === 'collect' && (!isPhoneValid || sending)) ||
-    (step === 'confirm' && (!isCodeComplete || confirming))
-
-  const primaryLabel = step === 'collect' ? 'Envoyer le code' : 'Confirmer'
 
   return (
     <>
@@ -168,86 +110,161 @@ export function PhoneVerificationModal({
         maxWidth="sm"
         aria-labelledby="phone-verification-title"
         disableRestoreFocus
+        PaperProps={{
+          sx: {
+            borderRadius: 3,
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+          },
+        }}
       >
-        <DialogTitle id="phone-verification-title">
-          Vous n&apos;avez pas encore ajouté de numéro de téléphone.
+        <DialogTitle
+          id="phone-verification-title"
+          sx={{
+            pb: 1,
+            pt: 3,
+            px: 3,
+            fontSize: '1.5rem',
+            fontWeight: 600,
+            color: '#111827',
+          }}
+        >
+          Ajoutez votre numéro de téléphone
         </DialogTitle>
 
-        <DialogContent sx={{ pt: 1 }}>
-          <Stack spacing={2}>
-            <Alert severity="info">
-              Cette étape garantit que nous pouvons vous envoyer des alertes critiques d&apos;Assisted Plantations sur
-              WhatsApp.
+        <DialogContent sx={{ px: 3, py: 2 }}>
+          <Stack spacing={3}>
+            <Alert
+              severity="info"
+              icon={<PhoneIcon />}
+              sx={{
+                borderRadius: 2,
+                backgroundColor: '#eff6ff',
+                color: '#1e40af',
+                '& .MuiAlert-icon': {
+                  color: '#3b82f6',
+                },
+              }}
+            >
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                Cette étape garantit que nous pouvons vous envoyer des alertes critiques d&apos;Assisted Plantations
+                sur WhatsApp.
+              </Typography>
             </Alert>
 
             <Box>
-              <Typography variant="subtitle2" gutterBottom>
-                Numéro malgache (préfixe fixe {COUNTRY_PREFIX})
+              <Typography
+                variant="subtitle2"
+                gutterBottom
+                sx={{
+                  fontWeight: 600,
+                  color: '#374151',
+                  mb: 1.5,
+                }}
+              >
+                Numéro malgache
               </Typography>
               <TextField
                 fullWidth
                 placeholder="34 12 345 67"
                 value={phoneSuffix}
                 onChange={handlePhoneChange}
-                onClick={step === 'confirm' ? handleEditNumber : undefined}
                 inputMode="numeric"
                 InputProps={{
-                  startAdornment: <InputAdornment position="start">{COUNTRY_PREFIX}</InputAdornment>,
-                  readOnly: step === 'confirm',
+                  startAdornment: (
+                    <InputAdornment
+                      position="start"
+                      sx={{
+                        fontWeight: 600,
+                        color: '#6b7280',
+                        fontSize: '1rem',
+                      }}
+                    >
+                      {COUNTRY_PREFIX}
+                    </InputAdornment>
+                  ),
                 }}
-                helperText={
-                  step === 'confirm'
-                    ? 'Cliquez sur le champ pour corriger le numéro.'
-                    : 'Saisissez les 9 chiffres restants.'
-                }
-                FormHelperTextProps={{ sx: { color: 'text.secondary' } }}
+                helperText="Saisissez les 9 chiffres de votre numéro malgache"
+                FormHelperTextProps={{
+                  sx: {
+                    color: '#6b7280',
+                    fontSize: '0.875rem',
+                    mt: 1,
+                  },
+                }}
                 sx={{
-                  '& .MuiInputBase-root': {
-                    backgroundColor: step === 'confirm' ? 'action.disabledBackground' : 'transparent',
+                  '& .MuiOutlinedInput-root': {
+                    borderRadius: 2,
+                    fontSize: '1rem',
+                    '&:hover fieldset': {
+                      borderColor: '#10b981',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#10b981',
+                      borderWidth: 2,
+                    },
                   },
                 }}
               />
             </Box>
-
-            {step === 'confirm' && (
-              <Box>
-                <Typography variant="subtitle2" gutterBottom>
-                  Code reçu sur WhatsApp
-                </Typography>
-                <TextField
-                  fullWidth
-                  placeholder="000000"
-                  value={code}
-                  onChange={handleCodeChange}
-                  inputMode="numeric"
-                  inputProps={{ maxLength: CODE_LENGTH }}
-                  helperText="À saisir dès réception du message WhatsApp (6 chiffres)."
-                />
-              </Box>
-            )}
-
-            {helperMessage && (
-              <Typography variant="body2" color="text.secondary">
-                {helperMessage}
-              </Typography>
-            )}
           </Stack>
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleDefer} color="inherit">
+        <DialogActions
+          sx={{
+            px: 3,
+            pb: 3,
+            pt: 2,
+            gap: 1.5,
+          }}
+        >
+          <Button
+            onClick={handleDefer}
+            sx={{
+              borderRadius: 2,
+              px: 3,
+              py: 1,
+              textTransform: 'none',
+              fontWeight: 500,
+              color: '#6b7280',
+              '&:hover': {
+                backgroundColor: '#f3f4f6',
+              },
+            }}
+          >
             Retarder
           </Button>
           <Button
             variant="contained"
-            onClick={step === 'collect' ? handleSendCode : handleConfirmCode}
-            disabled={primaryActionDisabled}
-            sx={{ minWidth: 160 }}
+            onClick={handleSave}
+            disabled={!isPhoneValid || saving}
+            sx={{
+              borderRadius: 2,
+              px: 4,
+              py: 1,
+              minWidth: 140,
+              textTransform: 'none',
+              fontWeight: 600,
+              fontSize: '0.9375rem',
+              backgroundColor: '#10b981',
+              boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+              '&:hover': {
+                backgroundColor: '#059669',
+                boxShadow: '0 6px 16px rgba(16, 185, 129, 0.4)',
+              },
+              '&:disabled': {
+                backgroundColor: '#d1d5db',
+                color: '#9ca3af',
+              },
+            }}
           >
-            {(sending || confirming) && (
-              <CircularProgress size={18} thickness={4} color="inherit" sx={{ mr: 1 }} />
+            {saving ? (
+              <>
+                <CircularProgress size={18} thickness={4} color="inherit" sx={{ mr: 1 }} />
+                Enregistrement...
+              </>
+            ) : (
+              'Confirmer'
             )}
-            {primaryLabel}
           </Button>
         </DialogActions>
       </Dialog>
