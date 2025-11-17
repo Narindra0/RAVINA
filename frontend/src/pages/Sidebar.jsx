@@ -116,34 +116,45 @@ export default function Sidebar({ user, isMobileOpen, onClose }) {
   const currentPath = routerState.location.pathname; 
   const { notifications, markAsRead, unreadCount, refresh } = useNotifications({ polling: true, unreadOnly: true });
   const [activeNotification, setActiveNotification] = useState(null);
+  const [dismissedNotificationIds, setDismissedNotificationIds] = useState([]);
+
+  useEffect(() => {
+    setDismissedNotificationIds((ids) => ids.filter((id) => notifications?.some((item) => item.id === id)));
+  }, [notifications]);
 
   useEffect(() => {
     if (!notifications || notifications.length === 0) {
       setActiveNotification(null);
       return;
     }
+    const nextNotification = notifications.find((item) => !dismissedNotificationIds.includes(item.id));
+    setActiveNotification(nextNotification || null);
+  }, [notifications, dismissedNotificationIds]);
 
-    if (!activeNotification || !notifications.some((item) => item.id === activeNotification.id)) {
-      setActiveNotification(notifications[0]);
-    }
-  }, [notifications, activeNotification]);
-
-  const handleNotificationDismiss = async (id) => {
-    // Si id est null, c'est une fermeture automatique (après 3s) : on ne marque pas comme lue
-    if (!id) {
+  const handleNotificationDismiss = async (id, reason) => {
+    const targetId = id || activeNotification?.id;
+    if (!targetId) {
       setActiveNotification(null);
       return;
     }
 
-    // Sinon, l'utilisateur a cliqué sur "Marquer comme lu" : on marque comme lue
-    try {
-      await markAsRead(id);
-      await refresh();
-    } catch (error) {
-      console.error('Erreur lors de la confirmation de la notification:', error);
-    } finally {
-      setActiveNotification(null);
+    if (reason === 'ack') {
+      try {
+        await markAsRead(targetId);
+        await refresh();
+      } catch (error) {
+        console.error('Erreur lors de la confirmation de la notification:', error);
+      } finally {
+        setDismissedNotificationIds((ids) => ids.filter((dismissedId) => dismissedId !== targetId));
+        setActiveNotification(null);
+      }
+      return;
     }
+
+    setDismissedNotificationIds((ids) =>
+      ids.includes(targetId) ? ids : [...ids, targetId]
+    );
+    setActiveNotification(null);
   };
 
   const handleLogout = () => {

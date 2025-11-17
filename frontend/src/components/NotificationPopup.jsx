@@ -58,11 +58,11 @@ export default function NotificationPopup({ notification, onAcknowledge, onClose
     if (reason === 'clickaway') {
       return
     }
-    onClose?.(null)
+    onClose?.(notification.id, reason || 'manual')
   }
 
   const handleMarkAsRead = () => {
-    onAcknowledge?.(id)
+    onAcknowledge?.(id, 'ack')
   }
 
   return (
@@ -114,7 +114,7 @@ export default function NotificationPopup({ notification, onAcknowledge, onClose
               <Button variant="text" size="small" onClick={handleMarkAsRead} sx={{ fontWeight: 600 }}>
                 Marquer comme lu
               </Button>
-              <IconButton size="small" onClick={() => onClose?.(null)}>
+              <IconButton size="small" onClick={() => onClose?.(notification.id, 'manual-button')}>
                 <CloseIcon fontSize="small" />
               </IconButton>
             </Stack>
