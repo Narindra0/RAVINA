@@ -1,45 +1,69 @@
-import React from 'react';
-import { Alert, Button, Snackbar, Stack, Typography } from '@mui/material';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
-import InfoIcon from '@mui/icons-material/Info';
+import React from 'react'
+import {
+  Snackbar,
+  Paper,
+  Stack,
+  Typography,
+  Button,
+  IconButton,
+  Box,
+} from '@mui/material'
+import WarningAmberIcon from '@mui/icons-material/WarningAmber'
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive'
+import InfoIcon from '@mui/icons-material/Info'
+import CloseIcon from '@mui/icons-material/Close'
 
-const PRIORITY_ICON = {
-  URGENT: <WarningAmberIcon fontSize="inherit" />,
-  IMPORTANT: <NotificationsActiveIcon fontSize="inherit" />,
-  INFO: <InfoIcon fontSize="inherit" />,
-};
-
-const PRIORITY_SEVERITY = {
-  URGENT: 'error',
-  IMPORTANT: 'warning',
-  INFO: 'info',
-};
+const PRIORITY_STYLES = {
+  URGENT: {
+    icon: WarningAmberIcon,
+    badge: 'Urgent',
+    colors: {
+      bg: 'linear-gradient(135deg, #fef2f2, #fee2e2)',
+      border: '#fecaca',
+      accent: '#dc2626',
+    },
+  },
+  IMPORTANT: {
+    icon: NotificationsActiveIcon,
+    badge: 'Important',
+    colors: {
+      bg: 'linear-gradient(135deg, #fffbeb, #fef3c7)',
+      border: '#fde68a',
+      accent: '#d97706',
+    },
+  },
+  INFO: {
+    icon: InfoIcon,
+    badge: 'Information',
+    colors: {
+      bg: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+      border: '#bfdbfe',
+      accent: '#2563eb',
+    },
+  },
+}
 
 export default function NotificationPopup({ notification, onAcknowledge, onClose }) {
   if (!notification) {
-    return null;
+    return null
   }
 
-  const { id, titre, messageDetaille, niveauPriorite } = notification;
-  const severity = PRIORITY_SEVERITY[niveauPriorite] || 'info';
-  const icon = PRIORITY_ICON[niveauPriorite] || PRIORITY_ICON.INFO;
-  // La notification s'affiche 3 secondes puis se ferme automatiquement sans marquer comme lue
-  const autoHideDuration = 3000;
+  const { id, titre, messageDetaille, niveauPriorite } = notification
+  const priority = PRIORITY_STYLES[niveauPriorite] || PRIORITY_STYLES.INFO
+  const Icon = priority.icon
+  const { bg, border, accent } = priority.colors
+  const autoHideDuration = 5000
 
   const handleClose = (_, reason) => {
     if (reason === 'clickaway') {
-      return;
+      return
     }
-    // Fermeture automatique après 3s : on ferme juste la popup sans marquer comme lue
-    // onClose est appelé avec null pour indiquer qu'on ne marque pas comme lue
-    onClose?.(null);
-  };
+    onClose?.(null)
+  }
 
   const handleMarkAsRead = () => {
-    // L'utilisateur clique explicitement sur "Marquer comme lu"
-    onAcknowledge?.(id);
-  };
+    onAcknowledge?.(id)
+  }
 
   return (
     <Snackbar
@@ -48,24 +72,56 @@ export default function NotificationPopup({ notification, onAcknowledge, onClose
       anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
       onClose={handleClose}
     >
-      <Alert
-        severity={severity}
-        icon={icon}
-        sx={{ alignItems: 'flex-start', minWidth: { xs: 'auto', md: 360 } }}
-        action={
-          <Button color="inherit" size="small" onClick={handleMarkAsRead}>
-            Marquer comme lu
-          </Button>
-        }
+      <Paper
+        elevation={8}
+        sx={{
+          p: 2,
+          borderRadius: 3,
+          minWidth: { xs: 320, md: 380 },
+          border: `1px solid ${border}`,
+          background: bg,
+        }}
       >
-        <Stack spacing={0.5}>
-          <Typography variant="subtitle1" fontWeight={600}>
-            {titre}
-          </Typography>
-          <Typography variant="body2">{messageDetaille}</Typography>
+        <Stack direction="row" spacing={2} alignItems="flex-start">
+          <Box
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              backgroundColor: 'rgba(255,255,255,0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: accent,
+              flexShrink: 0,
+            }}
+          >
+            <Icon fontSize="small" />
+          </Box>
+          <Stack spacing={1} flex={1}>
+            <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={2}>
+              <Typography variant="subtitle1" fontWeight={700} color="text.primary">
+                {titre}
+              </Typography>
+              <Typography variant="caption" sx={{ color: accent, fontWeight: 700, textTransform: 'uppercase' }}>
+                {priority.badge}
+              </Typography>
+            </Stack>
+            <Typography variant="body2" color="text.secondary">
+              {messageDetaille}
+            </Typography>
+            <Stack direction="row" spacing={1} justifyContent="flex-end">
+              <Button variant="text" size="small" onClick={handleMarkAsRead} sx={{ fontWeight: 600 }}>
+                Marquer comme lu
+              </Button>
+              <IconButton size="small" onClick={() => onClose?.(null)}>
+                <CloseIcon fontSize="small" />
+              </IconButton>
+            </Stack>
+          </Stack>
         </Stack>
-      </Alert>
+      </Paper>
     </Snackbar>
-  );
+  )
 }
 
