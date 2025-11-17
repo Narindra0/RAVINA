@@ -2,14 +2,8 @@
 
 namespace App\Command;
 
-use App\Entity\SuiviSnapshot;
-use App\Entity\UserPlantation;
-use App\Repository\UserPlantationRepository;
-use App\Service\LifecycleService;
-use App\Service\MeteoService;
-use App\Service\NotificationEngine;
-use App\Service\WateringService;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Service\DailyPlantationsProcessor;
+use App\Service\SystemStateService;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -20,12 +14,8 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 class ProcessPlantationsCommand extends Command
 {
     public function __construct(
-        private readonly UserPlantationRepository $plantationRepository,
-        private readonly EntityManagerInterface $entityManager,
-        private readonly MeteoService $meteoService,
-        private readonly LifecycleService $lifecycleService,
-        private readonly WateringService $wateringService,
-        private readonly NotificationEngine $notificationEngine,
+        private readonly DailyPlantationsProcessor $processor,
+        private readonly SystemStateService $systemStateService,
     ) {
         parent::__construct();
     }
@@ -33,85 +23,15 @@ class ProcessPlantationsCommand extends Command
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
-        $plantations = $this->plantationRepository->createQueryBuilder('p')
-            ->where('p.etatActuel = :status')
-            ->setParameter('status', UserPlantation::STATUS_ACTIVE)
-            ->getQuery()
-            ->getResult();
+        $result = $this->processor->run();
+        $this->systemStateService->markProcessCompleted();
 
-        if ($plantations === []) {
-            $io->success('Aucune plantation active à traiter.');
-            return Command::SUCCESS;
-        }
-
-        $today = new \DateTimeImmutable('today');
-        $processed = 0;
-        $notificationsCreated = 0;
-        $hasChanges = false;
-
-        foreach ($plantations as $plantation) {
-            if (!$plantation instanceof UserPlantation) {
-                continue;
-            }
-
-            $meteo = $this->meteoService->fetchDailyForecast(
-                (float) $plantation->getGeolocalisationLat(),
-                (float) $plantation->getGeolocalisationLon()
-            );
-
-            $lastSnapshot = $plantation->getSuiviSnapshots()->first();
-            $lastSnapshot = $lastSnapshot instanceof SuiviSnapshot ? $lastSnapshot : null;
-            $startDate = $plantation->getDatePlantation();
-            $startDateImmutable = $startDate instanceof \DateTimeInterface ? \DateTimeImmutable::createFromInterface($startDate) : null;
-
-            $createdForPlantation = $this->notificationEngine->evaluate($plantation, $meteo, $lastSnapshot);
-            $notificationsCreated += $createdForPlantation;
-            if ($createdForPlantation > 0) {
-                $hasChanges = true;
-            }
-
-            if ($startDateImmutable && $today < $startDateImmutable) {
-                continue;
-            }
-
-            if ($lastSnapshot instanceof SuiviSnapshot) {
-                $lastDate = $lastSnapshot->getDateSnapshot();
-                if ($lastDate instanceof \DateTimeInterface && $lastDate->format('Y-m-d') === $today->format('Y-m-d')) {
-                    continue;
-                }
-            }
-
-            $lifecycle = $this->lifecycleService->compute($plantation);
-            $watering = $this->wateringService->compute($plantation, $meteo, $lastSnapshot);
-
-            $snapshot = new SuiviSnapshot();
-            $snapshot->setUserPlantation($plantation);
-            $snapshot->setDateSnapshot(new \DateTimeImmutable());
-            $snapshot->setProgressionPourcentage(sprintf('%.2f', $lifecycle['progression']));
-            $snapshot->setStadeActuel((string) $lifecycle['stage']);
-            $snapshot->setArrosageRecoDate($watering['date']);
-            $snapshot->setArrosageRecoQuantiteMl(sprintf('%.2f', $watering['quantity']));
-            $snapshot->setDecisionDetailsJson([
-                'lifecycle' => $lifecycle['details'] ?? [],
-                'watering_notes' => $watering['notes'] ?? [],
-                'frequency_days' => $watering['frequency_days'] ?? null,
-            ]);
-            $snapshot->setMeteoDataJson([
-                'daily' => $meteo['daily'] ?? [],
-                'error' => $meteo['error'] ?? null,
-            ]);
-
-            $this->entityManager->persist($snapshot);
-            $plantation->addSuiviSnapshot($snapshot);
-            $processed++;
-            $hasChanges = true;
-        }
-
-        if ($hasChanges) {
-            $this->entityManager->flush();
-        }
-
-        $io->success(sprintf('%d plantation(s) traitée(s), %d notification(s) générée(s).', $processed, $notificationsCreated));
+        $message = sprintf(
+            '%d plantation(s) traitée(s), %d notification(s) générée(s).',
+            $result['processed'],
+            $result['notifications']
+        );
+        $io->success($message);
 
         return Command::SUCCESS;
     }

@@ -18,7 +18,8 @@ class WateringService
         $frequencyDays = $this->resolveFrequencyDays((string) $template?->getWateringFrequency());
 
         $todayDate = new \DateTimeImmutable('today');
-        $referenceDate = $lastSnapshot?->getArrosageRecoDate()
+        $lastManualWatering = $plantation->getLastManualWateringAt();
+        $referenceDate = $lastManualWatering
             ?? $plantation->getDatePlantation()
             ?? $todayDate;
 
@@ -30,8 +31,11 @@ class WateringService
 
         $interval = new \DateInterval(sprintf('P%dD', $frequencyDays));
         $nextDate = $referenceDate->add($interval);
-        while ($nextDate < $todayDate) {
-            $nextDate = $nextDate->add($interval);
+        $canFastForward = $lastManualWatering instanceof \DateTimeInterface;
+        if ($canFastForward) {
+            while ($nextDate < $todayDate) {
+                $nextDate = $nextDate->add($interval);
+            }
         }
         $quantity = $baseQuantity;
         $decisions = [];

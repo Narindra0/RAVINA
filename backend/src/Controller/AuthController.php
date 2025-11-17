@@ -2,6 +2,7 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Service\DailyProcessingScheduler;
 use Doctrine\ORM\EntityManagerInterface;
 use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -18,15 +19,18 @@ class AuthController extends AbstractController
     private EntityManagerInterface $em;
     private UserPasswordHasherInterface $passwordHasher;
     private JWTTokenManagerInterface $jwtManager;
+    private DailyProcessingScheduler $dailyProcessingScheduler;
 
     public function __construct(
         EntityManagerInterface $em,
         UserPasswordHasherInterface $passwordHasher,
-        JWTTokenManagerInterface $jwtManager
+        JWTTokenManagerInterface $jwtManager,
+        DailyProcessingScheduler $dailyProcessingScheduler,
     ) {
         $this->em = $em;
         $this->passwordHasher = $passwordHasher;
         $this->jwtManager = $jwtManager;
+        $this->dailyProcessingScheduler = $dailyProcessingScheduler;
     }
 
     #[Route('/api/login', name: 'api_login', methods: ['POST'])]
@@ -48,6 +52,12 @@ class AuthController extends AbstractController
         }
 
         $token = $this->jwtManager->create($user);
+
+        try {
+            $this->dailyProcessingScheduler->runIfStale();
+        } catch (\Throwable) {
+            // En cas d'erreur, on laisse la connexion aboutir et on retentera au prochain login.
+        }
 
         $numeroTelephone = $user->getNumeroTelephone();
         $phoneVerified = !empty($numeroTelephone);

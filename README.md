@@ -230,6 +230,31 @@ cd frontend && npm run dev
 
 ---
 
+## Planification Quotidienne
+
+Les notifications météo/rappels et les snapshots automatiques sont générés via :
+
+```
+cd backend
+php bin/console app:plantations:process --env=prod >> var/log/plantations.log 2>&1
+```
+
+Planifiez cette commande quotidiennement :
+
+- **Linux (cron)**  
+  `0 6 * * * /usr/bin/php /var/www/RAVINA/backend/bin/console app:plantations:process --env=prod >> /var/www/RAVINA/backend/var/log/plantations.log 2>&1`
+
+- **Windows Task Scheduler**  
+  `pwsh.exe -Command "cd D:\OrientMada\RAVINA\backend; php bin/console app:plantations:process --env=prod >> var\log\plantations.log 2>&1"`
+
+Surveillez `var/log/plantations.log` et `var/log/{dev,prod}.log` pour confirmer l’exécution et diagnostiquer les erreurs éventuelles.
+
+### Auto-relance lors de la connexion
+- Si le cron n’a pas pu s’exécuter (panne réseau/Railway), la première connexion utilisateur du jour déclenche automatiquement le même traitement (`DailyProcessingScheduler`).  
+- Un verrou applicatif empêche plusieurs relances dans la journée : si le job est déjà passé, aucune action supplémentaire n’est réalisée.
+
+---
+
 ## API
 
 **Base URL**: `http://127.0.0.1:8000/api`
@@ -242,6 +267,8 @@ cd frontend && npm run dev
 | `/plants` | `GET`, `POST` | CRUD des plantations | **JWT** |
 | `/plants/{id}` | `GET`, `PUT`, `DELETE` | Opérations sur une plante spécifique (restreint au propriétaire) | **JWT** |
 | `/suggestions/plants` | `GET` | Suggestions saisonnières (ex: `?month=10`) | Aucun |
+| `/admin/notifications/health` | `GET` | Statistiques notifications (24h) | **ROLE_ADMIN** |
+| `/notifications/whatsapp` | `POST` | Envoi manuel WhatsApp | **JWT** |
 
 **Documentation interactive**: `http://127.0.0.1:8000/api/docs` (Swagger/Redoc)
 
@@ -252,6 +279,8 @@ cd frontend && npm run dev
 ### Backend (`cd backend`)
 * Migrations : `php bin/console doctrine:migrations:migrate`
 * Clear cache : `php bin/console cache:clear`
+* Traitement quotidien : `php bin/console app:plantations:process`
+* Diagnostic notifications : `php bin/console app:notifications:diagnose`
 
 ### Frontend (`cd frontend`)
 * Build de production : `npm run build`

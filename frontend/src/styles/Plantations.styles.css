@@ -110,12 +110,25 @@
   flex-wrap: wrap;
 }
 
+.plantation-title-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .plantation-name {
   margin: 0;
   font-size: 1.5rem;
   font-weight: 700;
   color: #0f172a;
   line-height: 1.2;
+}
+
+.plantation-type-label {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #4b5563;
+  font-weight: 500;
 }
 
 .plantation-status-badge {

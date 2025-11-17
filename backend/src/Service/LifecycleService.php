@@ -15,9 +15,22 @@ class LifecycleService
         $template = $plantation->getPlantTemplate();
         $expectedDays = max(1, $template?->getExpectedHarvestDays() ?? 1);
 
-        $datePlantation = $plantation->getDatePlantation() instanceof \DateTimeInterface
-            ? \DateTimeImmutable::createFromInterface($plantation->getDatePlantation())
-            : new \DateTimeImmutable();
+        if (!$plantation->isPlantationConfirmee()) {
+            return [
+                'progression' => 0.0,
+                'stage' => 'En attente de plantation',
+                'details' => [
+                    'days_elapsed' => 0,
+                    'expected_days' => $expectedDays,
+                    'stage_source' => 'pending_confirmation',
+                ],
+            ];
+        }
+
+        $datePlantation = $plantation->getDatePlantationConfirmee()
+            ?? ($plantation->getDatePlantation() instanceof \DateTimeInterface
+                ? \DateTimeImmutable::createFromInterface($plantation->getDatePlantation())
+                : new \DateTimeImmutable());
 
         $daysElapsed = (int) $datePlantation->diff(new \DateTimeImmutable('today'))->format('%a');
         $progression = round(min(100, max(0, ($daysElapsed / $expectedDays) * 100)), 2);

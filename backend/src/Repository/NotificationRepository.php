@@ -49,4 +49,28 @@ class NotificationRepository extends ServiceEntityRepository
 
         return $result !== null;
     }
+
+    public function countSince(\DateTimeImmutable $since): int
+    {
+        return (int) $this->createQueryBuilder('n')
+            ->select('COUNT(n.id)')
+            ->andWhere('n.dateCreation >= :since')
+            ->setParameter('since', $since)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function findLastNotificationDate(): ?\DateTimeImmutable
+    {
+        $result = $this->createQueryBuilder('n')
+            ->select('n.dateCreation AS dateCreation')
+            ->orderBy('n.dateCreation', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        return isset($result['dateCreation']) && $result['dateCreation'] instanceof \DateTimeImmutable
+            ? $result['dateCreation']
+            : null;
+    }
 }

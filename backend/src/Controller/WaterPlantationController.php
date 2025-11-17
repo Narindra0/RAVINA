@@ -90,6 +90,7 @@ class WaterPlantationController extends AbstractController
 
         $this->entityManager->persist($snapshot);
         $plantation->addSuiviSnapshot($snapshot);
+        $plantation->setLastManualWateringAt(new \DateTimeImmutable());
         $this->entityManager->flush();
 
         return $this->json([

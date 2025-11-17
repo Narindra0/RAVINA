@@ -122,6 +122,9 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
   const stage = snapshot?.stadeActuel
   const meteoToday = snapshot?.meteoDataJson?.daily?.[0]
   const lastSnapshots = isUpcomingPlantation ? [] : rawSnapshots.slice(0, 3)
+  const lastSnapshotDateLabel = snapshot?.dateSnapshot
+    ? new Date(snapshot.dateSnapshot).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' })
+    : null
 
   return (
     <Dialog
@@ -266,6 +269,28 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
         )}
 
         <Divider sx={{ my: 1.5 }} />
+
+        {!isUpcomingPlantation && snapshot && (
+          <Box
+            mb={2}
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              border: '1px solid #e5e7eb',
+              backgroundColor: '#f9fafb',
+            }}
+          >
+            <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
+              Dernier suivi
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {lastSnapshotDateLabel ? `Relevé le ${lastSnapshotDateLabel}` : 'Relevé récent'} · {stage || 'Stade'} · {Math.round(progression)}% de progression
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+              {startDateLabel ? `Plantée le ${startDateLabel}` : 'Date de plantation inconnue'} · Type : {template?.type ?? '—'} · Localisation : {plantation.localisation ?? '—'}
+            </Typography>
+          </Box>
+        )}
 
         {!isUpcomingPlantation && (
           <Box>

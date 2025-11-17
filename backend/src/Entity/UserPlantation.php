@@ -108,6 +108,10 @@ class UserPlantation
     #[Groups(['user_plantation:read'])]
     private ?\DateTimeImmutable $updatedAt = null;
 
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    #[Groups(['user_plantation:read'])]
+    private ?\DateTimeImmutable $lastManualWateringAt = null;
+
     /**
      * @var Collection<int, SuiviSnapshot>
      */
@@ -278,6 +282,19 @@ class UserPlantation
     public function touch(): void
     {
         $this->updatedAt = new \DateTimeImmutable();
+    }
+
+    public function getLastManualWateringAt(): ?\DateTimeImmutable
+    {
+        return $this->lastManualWateringAt;
+    }
+
+    public function setLastManualWateringAt(?\DateTimeImmutable $lastManualWateringAt): self
+    {
+        $this->lastManualWateringAt = $lastManualWateringAt;
+        $this->touch();
+
+        return $this;
     }
 
     /**

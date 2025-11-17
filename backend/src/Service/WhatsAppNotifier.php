@@ -83,6 +83,11 @@ class WhatsAppNotifier
         return !empty($this->accessToken) && !empty($this->phoneNumberId);
     }
 
+    public function isReady(): bool
+    {
+        return $this->isConfigured();
+    }
+
     /**
      * @return array<string, mixed>
      */

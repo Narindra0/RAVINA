@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Repository\NotificationRepository;
 use App\Repository\UserRepository;
 use App\Service\WhatsAppNotifier;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -76,6 +77,19 @@ class NotificationController extends AbstractController
         }
 
         return $repository->find($targetId);
+    }
+
+    #[Route('/api/admin/notifications/health', name: 'api_notifications_health', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function health(NotificationRepository $notificationRepository): JsonResponse
+    {
+        $since = new \DateTimeImmutable('-1 day');
+        $last = $notificationRepository->findLastNotificationDate();
+
+        return $this->json([
+            'notifications_last_24h' => $notificationRepository->countSince($since),
+            'last_notification_at' => $last?->format(\DateTimeInterface::ATOM),
+        ]);
     }
 }
 

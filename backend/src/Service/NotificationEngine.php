@@ -7,6 +7,7 @@ use App\Entity\SuiviSnapshot;
 use App\Entity\UserPlantation;
 use App\Repository\NotificationRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 
 class NotificationEngine
 {
@@ -14,6 +15,7 @@ class NotificationEngine
         private readonly NotificationRepository $notificationRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly WhatsAppNotifier $whatsAppNotifier,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -121,6 +123,7 @@ class NotificationEngine
                     $title,
                     $message
                 );
+                $this->logNotification('RAPPEL_PLANTATION_2J', $plantation);
                 $created++;
             }
         }
@@ -142,6 +145,7 @@ class NotificationEngine
                     $title,
                     $message
                 );
+                $this->logNotification('RAPPEL_PLANTATION_1J', $plantation);
                 $created++;
             }
         }
@@ -190,6 +194,7 @@ class NotificationEngine
             $title,
             $message
         );
+        $this->logNotification('RAPPEL_PLANTATION_RETARD', $plantation);
 
         return 1;
     }
@@ -616,6 +621,15 @@ class NotificationEngine
         return $notification;
     }
 
+    private function logNotification(string $type, UserPlantation $plantation): void
+    {
+        $this->logger->info('Notification envoyée', [
+            'type' => $type,
+            'plantation_id' => $plantation->getId(),
+            'user_id' => $plantation->getUser()?->getId(),
+        ]);
+    }
+
     private function dispatchWhatsApp(UserPlantation $plantation, string $title, string $message): void
     {
         $user = $plantation->getUser();
@@ -675,6 +689,11 @@ class NotificationEngine
 
     private function hasManualWateringSince(UserPlantation $plantation, \DateTimeImmutable $since): bool
     {
+        $lastManual = $plantation->getLastManualWateringAt();
+        if ($lastManual instanceof \DateTimeImmutable && $lastManual >= $since) {
+            return true;
+        }
+
         foreach ($plantation->getSuiviSnapshots() as $snapshot) {
             $snapshotDate = $snapshot->getDateSnapshot();
             if (!$snapshotDate instanceof \DateTimeInterface) {

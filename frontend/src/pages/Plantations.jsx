@@ -245,9 +245,16 @@ export default function Plantations() {
                   </div>
                   <div className="plantation-header-info">
                     <div className="plantation-title-row">
-                      <h2 className="plantation-name">
-                        {template?.name ?? 'Plantation'}{template?.type ? ` (${template.type})` : ''}
-                      </h2>
+                      <div className="plantation-title-col">
+                        <h2 className="plantation-name">
+                          {template?.name ?? 'Plantation'}
+                        </h2>
+                        {template?.type && (
+                          <p className="plantation-type-label">
+                            Type : <span>{template.type}</span>
+                          </p>
+                        )}
+                      </div>
                       <span
                         className="plantation-status-badge"
                         style={{ backgroundColor: statusColor }}
