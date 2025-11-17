@@ -599,6 +599,84 @@ class NotificationEngine
         return 1;
     }
 
+    /**
+     * @param array<string, mixed> $decisionDetails
+     */
+    public function pushDecisionAdvice(UserPlantation $plantation, array $decisionDetails): ?Notification
+    {
+        $wateringNotes = array_values(array_filter(
+            is_array($decisionDetails['watering_notes'] ?? null) ? $decisionDetails['watering_notes'] : [],
+            static fn ($note) => is_string($note) && trim($note) !== ''
+        ));
+        $frequencyDays = $decisionDetails['frequency_days'] ?? null;
+        $lifecycle = is_array($decisionDetails['lifecycle'] ?? null) ? $decisionDetails['lifecycle'] : [];
+        $hasLifecycleInfo = isset($lifecycle['days_elapsed']) || isset($lifecycle['expected_days']) || !empty($lifecycle['stage_source']);
+
+        if (empty($wateringNotes) && !$frequencyDays && !$hasLifecycleInfo) {
+            return null;
+        }
+
+        $cooldown = (new \DateTimeImmutable())->sub(new \DateInterval('PT12H'));
+        if ($this->notificationRepository->hasRecentNotification($plantation, 'CONSEIL_DECISION', $cooldown)) {
+            return null;
+        }
+
+        $messageLines = [];
+        foreach ($wateringNotes as $note) {
+            $messageLines[] = $note;
+        }
+
+        if ($frequencyDays) {
+            $messageLines[] = sprintf(
+                'Fréquence recommandée : toutes les %d jour%s.',
+                (int) $frequencyDays,
+                (int) $frequencyDays > 1 ? 's' : ''
+            );
+        }
+
+        if ($hasLifecycleInfo) {
+            $lifecycleParts = [];
+            if (isset($lifecycle['days_elapsed'], $lifecycle['expected_days'])) {
+                $lifecycleParts[] = sprintf(
+                    '%d/%d jours de cycle',
+                    (int) $lifecycle['days_elapsed'],
+                    (int) $lifecycle['expected_days']
+                );
+            } elseif (isset($lifecycle['days_elapsed'])) {
+                $lifecycleParts[] = sprintf('%d jours écoulés', (int) $lifecycle['days_elapsed']);
+            } elseif (isset($lifecycle['expected_days'])) {
+                $lifecycleParts[] = sprintf('%d jours attendus', (int) $lifecycle['expected_days']);
+            }
+
+            if (!empty($lifecycle['stage_source'])) {
+                $lifecycleParts[] = sprintf('Source : %s', $lifecycle['stage_source']);
+            }
+
+            if (!empty($lifecycleParts)) {
+                $messageLines[] = implode(' · ', $lifecycleParts);
+            }
+        }
+
+        if (empty($messageLines)) {
+            return null;
+        }
+
+        $title = sprintf('Conseil du jour (%s)', $this->resolvePlantName($plantation));
+        $formattedLines = array_map(static fn ($line) => trim((string) $line), $messageLines);
+        $message = implode("\n• ", $formattedLines);
+        if (!str_starts_with($message, '•')) {
+            $message = '• ' . $message;
+        }
+
+        return $this->createNotification(
+            $plantation,
+            'CONSEIL_DECISION',
+            Notification::PRIORITY_INFO,
+            $title,
+            $message
+        );
+    }
+
     private function createNotification(
         UserPlantation $plantation,
         string $type,

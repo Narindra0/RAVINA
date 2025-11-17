@@ -85,11 +85,12 @@ class DailyPlantationsProcessor
             $snapshot->setStadeActuel((string) $lifecycle['stage']);
             $snapshot->setArrosageRecoDate($watering['date']);
             $snapshot->setArrosageRecoQuantiteMl(sprintf('%.2f', $watering['quantity']));
-            $snapshot->setDecisionDetailsJson([
+            $decisionDetails = [
                 'lifecycle' => $lifecycle['details'] ?? [],
                 'watering_notes' => $watering['notes'] ?? [],
                 'frequency_days' => $watering['frequency_days'] ?? null,
-            ]);
+            ];
+            $snapshot->setDecisionDetailsJson($decisionDetails);
             $snapshot->setMeteoDataJson([
                 'daily' => $meteo['daily'] ?? [],
                 'error' => $meteo['error'] ?? null,
@@ -97,6 +98,7 @@ class DailyPlantationsProcessor
 
             $this->entityManager->persist($snapshot);
             $plantation->addSuiviSnapshot($snapshot);
+            $this->notificationEngine->pushDecisionAdvice($plantation, $decisionDetails);
             $processed++;
             $hasChanges = true;
         }

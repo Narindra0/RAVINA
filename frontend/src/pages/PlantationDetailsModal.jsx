@@ -47,6 +47,26 @@ const formatDateLabel = (dateString) => {
   })
 }
 
+const parseNumber = (value) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+const normalizeDecisionDetails = (details) => {
+  if (!details || typeof details !== 'object') {
+    return { wateringNotes: [], frequencyDays: null, lifecycle: null }
+  }
+  return {
+    wateringNotes: Array.isArray(details.watering_notes)
+      ? details.watering_notes.filter((note) => typeof note === 'string' && note.trim().length > 0)
+      : [],
+    frequencyDays: parseNumber(details.frequency_days),
+    lifecycle: typeof details.lifecycle === 'object' && details.lifecycle !== null
+      ? details.lifecycle
+      : null,
+  }
+}
+
 const StatCard = ({ icon: Icon, label, value, accent }) => (
   <Paper
     elevation={0}
@@ -158,6 +178,16 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
 
   const stage = snapshot?.stadeActuel
   const meteoToday = snapshot?.meteoDataJson?.daily?.[0]
+  const currentDecisionDetails = normalizeDecisionDetails(snapshot?.decisionDetailsJson)
+  const hasCurrentAdvice =
+    currentDecisionDetails.wateringNotes.length > 0 ||
+    currentDecisionDetails.frequencyDays !== null ||
+    !!(
+      currentDecisionDetails.lifecycle &&
+      (currentDecisionDetails.lifecycle.days_elapsed !== undefined ||
+        currentDecisionDetails.lifecycle.expected_days !== undefined ||
+        currentDecisionDetails.lifecycle.stage_source)
+    )
   const lastSnapshotDateLabel = snapshot?.dateSnapshot
     ? new Date(snapshot.dateSnapshot).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' })
     : null
@@ -295,6 +325,56 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
           </Stack>
         )}
 
+        {/* Conseils personnalisés */}
+        {!isUpcomingPlantation && snapshot && hasCurrentAdvice && (
+          <Box
+            mb={2}
+            sx={{
+              p: 2,
+              borderRadius: 2,
+              border: '1px solid #fcd34d',
+              background: 'linear-gradient(145deg, #fefce8, #fef3c7)',
+            }}
+          >
+            <Typography variant="subtitle1" sx={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+              Conseils personnalisés
+            </Typography>
+            <Stack spacing={1.25} mt={1}>
+              {currentDecisionDetails.wateringNotes.map((note, idx) => (
+                <Typography key={`${note}-${idx}`} variant="body2" sx={{ color: '#92400e' }}>
+                  • {note}
+                </Typography>
+              ))}
+              {currentDecisionDetails.frequencyDays !== null && (
+                <Chip
+                  size="small"
+                  sx={{ alignSelf: 'flex-start', fontWeight: 600, color: '#92400e', borderColor: '#fcd34d' }}
+                  variant="outlined"
+                  label={`Fréquence recommandée : toutes les ${currentDecisionDetails.frequencyDays} jour${currentDecisionDetails.frequencyDays > 1 ? 's' : ''}`}
+                />
+              )}
+              {currentDecisionDetails.lifecycle && (
+                <Box sx={{ fontSize: '0.85rem', color: '#92400e' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 600, color: '#92400e' }}>
+                    Cycle de croissance
+                  </Typography>
+                  <Typography variant="body2">
+                    {currentDecisionDetails.lifecycle.days_elapsed ?? '?'} jours écoulés
+                    {currentDecisionDetails.lifecycle.expected_days
+                      ? ` / ${currentDecisionDetails.lifecycle.expected_days} jours prévus`
+                      : ''}
+                  </Typography>
+                  {currentDecisionDetails.lifecycle.stage_source && (
+                    <Typography variant="caption" color="text.secondary">
+                      Source : {currentDecisionDetails.lifecycle.stage_source}
+                    </Typography>
+                  )}
+                </Box>
+              )}
+            </Stack>
+          </Box>
+        )}
+
         {/* Meteo Today */}
         {!isUpcomingPlantation && meteoToday && (
           <Box mb={2} display="flex" gap={1} alignItems="center" flexWrap="wrap">
@@ -379,9 +459,16 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
               <Box display="flex" flexDirection="column" gap={1.5}>
                 {historicalSnapshots.map((s, idx) => {
                   const progressionValue = Math.round(parseFloat(s.progressionPourcentage || '0'))
-                  const decisionEntries = s.decisionDetailsJson && typeof s.decisionDetailsJson === 'object'
-                    ? Object.entries(s.decisionDetailsJson)
-                    : []
+                  const decisions = normalizeDecisionDetails(s.decisionDetailsJson)
+                  const hasHistoricalAdvice =
+                    decisions.wateringNotes.length > 0 ||
+                    decisions.frequencyDays !== null ||
+                    !!(
+                      decisions.lifecycle &&
+                      (decisions.lifecycle.days_elapsed !== undefined ||
+                        decisions.lifecycle.expected_days !== undefined ||
+                        decisions.lifecycle.stage_source)
+                    )
                   return (
                     <Paper
                     key={`${s.dateSnapshot}-${idx}`}
@@ -408,7 +495,7 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
                     <Typography variant="body2" color="text.secondary">
                       Prochain arrosage : {s.arrosageRecoDate ? formatDateLabel(s.arrosageRecoDate) : 'à définir'} · Quantité : {s.arrosageRecoQuantiteMl ?? '—'} ml
                     </Typography>
-                    {decisionEntries.length > 0 && (
+                    {hasHistoricalAdvice && (
                       <Box
                         sx={{
                           bgcolor: '#f9fafb',
@@ -418,14 +505,25 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
                         }}
                       >
                         <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
-                          Détails de décision
+                          Conseils enregistrés
                         </Typography>
                         <Stack spacing={0.5} mt={0.5}>
-                          {decisionEntries.map(([key, value]) => (
-                            <Typography key={key} variant="caption" color="text.secondary">
-                              {`${key} : ${typeof value === 'object' ? JSON.stringify(value) : value ?? '—'}`}
+                          {decisions.wateringNotes.map((note, noteIdx) => (
+                            <Typography key={`${note}-${noteIdx}`} variant="caption" color="text.secondary">
+                              • {note}
                             </Typography>
                           ))}
+                          {decisions.frequencyDays !== null && (
+                            <Typography variant="caption" color="text.secondary">
+                              Fréquence recommandée : toutes les {decisions.frequencyDays} jour{decisions.frequencyDays > 1 ? 's' : ''}
+                            </Typography>
+                          )}
+                          {decisions.lifecycle && (
+                            <Typography variant="caption" color="text.secondary">
+                              {decisions.lifecycle.days_elapsed ?? '?'} j / {decisions.lifecycle.expected_days ?? '?'} j
+                              {decisions.lifecycle.stage_source ? ` · Source ${decisions.lifecycle.stage_source}` : ''}
+                            </Typography>
+                          )}
                         </Stack>
                       </Box>
                     )}
