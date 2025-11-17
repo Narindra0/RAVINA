@@ -76,8 +76,6 @@
         }
     },
     "require-dev": {
-        "phpunit/phpunit": "^11.2",
-        "symfony/maker-bundle": "*",
-        "symfony/phpunit-bridge": "^7.3"
+        "symfony/maker-bundle": "*"
     }
 }

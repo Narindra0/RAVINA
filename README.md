@@ -149,6 +149,17 @@ L'application sera accessible par défaut sur `http://localhost:5173`.
 
 ---
 
+### Extensions PHP nécessaires
+- `pdo_mysql` doit être activée sur l'environnement d'exécution (Dockerfile, Railway, etc.).  
+  Exemple Dockerfile :
+  ```
+  FROM php:8.2-cli
+  RUN docker-php-ext-install pdo_mysql
+  ```
+  Sur Alpine/Buildpack, installez l’équivalent (`apk add php82-pdo_mysql`, `apt-get install php8.2-mysql`, …).
+
+---
+
 ## Configuration
 
 ### Base de données (MySQL via Docker)
