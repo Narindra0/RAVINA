@@ -38,6 +38,15 @@ const daysUntil = (dateString) => {
   return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
 }
 
+const formatDateLabel = (dateString) => {
+  if (!dateString) return 'Date inconnue'
+  return new Date(dateString).toLocaleDateString('fr-FR', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  })
+}
+
 const StatCard = ({ icon: Icon, label, value, accent }) => (
   <Paper
     elevation={0}
@@ -135,7 +144,7 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
   const canConfirmPlanting = !isPlantationConfirmed && plantingDate && plantingDate <= today
   const rawSnapshots = Array.isArray(plantation.suiviSnapshots) ? plantation.suiviSnapshots : []
   const snapshot = isUpcomingPlantation ? null : rawSnapshots[0]
-  const secondarySnapshots = isUpcomingPlantation ? [] : rawSnapshots.slice(1, 3)
+  const historicalSnapshots = isUpcomingPlantation ? [] : rawSnapshots.slice(1)
   const progression = snapshot ? parseFloat(snapshot.progressionPourcentage) : 0
   const statusColor = getStatusColor(plantation.etatActuel)
   const startDateLabel = startDate
@@ -321,7 +330,7 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
             }}
           >
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-              Dernier suivi
+              Suivi actuel
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
               {lastSnapshotDateLabel ? `Relevé le ${lastSnapshotDateLabel}` : 'Relevé récent'} · {stage || 'Stade'} · {Math.round(progression)}% de progression
@@ -362,41 +371,67 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
           <Box>
             <Box display="flex" alignItems="center" gap={1} mb={1}>
               <Timeline sx={{ color: '#6b7280' }} />
-              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Derniers suivis</Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Historique des suivis</Typography>
             </Box>
-            {secondarySnapshots.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">Aucun snapshot supplémentaire.</Typography>
+            {historicalSnapshots.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">Aucune donnée historique pour le moment.</Typography>
             ) : (
-              <Box display="flex" flexDirection="column" gap={1}>
-                {secondarySnapshots.map((s, idx) => (
-                  <Paper
+              <Box display="flex" flexDirection="column" gap={1.5}>
+                {historicalSnapshots.map((s, idx) => {
+                  const progressionValue = Math.round(parseFloat(s.progressionPourcentage || '0'))
+                  const decisionEntries = s.decisionDetailsJson && typeof s.decisionDetailsJson === 'object'
+                    ? Object.entries(s.decisionDetailsJson)
+                    : []
+                  return (
+                    <Paper
                     key={`${s.dateSnapshot}-${idx}`}
                     variant="outlined"
                     sx={{
                       p: 1.5,
                       borderRadius: 2,
                       borderColor: '#e5e7eb',
-                      backgroundColor: '#f9fafb',
+                      backgroundColor: '#ffffff',
                       display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      gap: 2,
+                      flexDirection: 'column',
+                      gap: 1,
                     }}
                   >
-                    <Box>
+                    <Box display="flex" alignItems="center" justifyContent="space-between" gap={1}>
                       <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                        {new Date(s.dateSnapshot).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' })}
+                        {formatDateLabel(s.dateSnapshot)}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        Observateur {s.auteur ?? '—'}
-                      </Typography>
+                      <Chip
+                        label={`${s.stadeActuel || 'Stade'} · ${progressionValue}%`}
+                        sx={{ fontWeight: 600, borderRadius: 1.5 }}
+                      />
                     </Box>
-                    <Chip
-                      label={`${s.stadeActuel} · ${Math.round(parseFloat(s.progressionPourcentage || '0'))}%`}
-                      sx={{ fontWeight: 600, borderRadius: 1.5 }}
-                    />
+                    <Typography variant="body2" color="text.secondary">
+                      Prochain arrosage : {s.arrosageRecoDate ? formatDateLabel(s.arrosageRecoDate) : 'à définir'} · Quantité : {s.arrosageRecoQuantiteMl ?? '—'} ml
+                    </Typography>
+                    {decisionEntries.length > 0 && (
+                      <Box
+                        sx={{
+                          bgcolor: '#f9fafb',
+                          borderRadius: 1.5,
+                          p: 1,
+                          border: '1px dashed #e5e7eb',
+                        }}
+                      >
+                        <Typography variant="caption" sx={{ fontWeight: 600, color: 'text.secondary' }}>
+                          Détails de décision
+                        </Typography>
+                        <Stack spacing={0.5} mt={0.5}>
+                          {decisionEntries.map(([key, value]) => (
+                            <Typography key={key} variant="caption" color="text.secondary">
+                              {`${key} : ${typeof value === 'object' ? JSON.stringify(value) : value ?? '—'}`}
+                            </Typography>
+                          ))}
+                        </Stack>
+                      </Box>
+                    )}
                   </Paper>
-                ))}
+                  )
+                })}
               </Box>
             )}
           </Box>
