@@ -10,6 +10,8 @@ import {
   Divider,
   Button,
   Alert,
+  Paper,
+  Stack,
 } from '@mui/material'
 import { Close, LocalFlorist, WaterDrop, LocationOn, Timeline, CalendarMonth } from '@mui/icons-material'
 import { useTheme } from '@mui/material/styles'
@@ -35,6 +37,31 @@ const daysUntil = (dateString) => {
   const diffMs = t1 - t0
   return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)))
 }
+
+const StatCard = ({ icon: Icon, label, value, accent }) => (
+  <Paper
+    elevation={0}
+    sx={{
+      p: 1.5,
+      borderRadius: 2,
+      border: '1px solid #e5e7eb',
+      background: 'linear-gradient(135deg, #ffffff, #f9fafb)',
+      minHeight: 72,
+    }}
+  >
+    <Box display="flex" alignItems="center" gap={1}>
+      {Icon && <Icon sx={{ color: accent ?? '#10b981' }} />}
+      <Box>
+        <Typography variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase', fontWeight: 600 }}>
+          {label}
+        </Typography>
+        <Typography variant="subtitle2" sx={{ fontWeight: 700, mt: 0.25 }}>
+          {value}
+        </Typography>
+      </Box>
+    </Box>
+  </Paper>
+)
 
 export default function PlantationDetailsModal({ open, onClose, plantation }) {
   const [actionLoading, setActionLoading] = React.useState(false)
@@ -108,6 +135,7 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
   const canConfirmPlanting = !isPlantationConfirmed && plantingDate && plantingDate <= today
   const rawSnapshots = Array.isArray(plantation.suiviSnapshots) ? plantation.suiviSnapshots : []
   const snapshot = isUpcomingPlantation ? null : rawSnapshots[0]
+  const secondarySnapshots = isUpcomingPlantation ? [] : rawSnapshots.slice(1, 3)
   const progression = snapshot ? parseFloat(snapshot.progressionPourcentage) : 0
   const statusColor = getStatusColor(plantation.etatActuel)
   const startDateLabel = startDate
@@ -121,7 +149,6 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
 
   const stage = snapshot?.stadeActuel
   const meteoToday = snapshot?.meteoDataJson?.daily?.[0]
-  const lastSnapshots = isUpcomingPlantation ? [] : rawSnapshots.slice(0, 3)
   const lastSnapshotDateLabel = snapshot?.dateSnapshot
     ? new Date(snapshot.dateSnapshot).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' })
     : null
@@ -205,45 +232,58 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
           </Box>
         )}
 
-        {/* Progression */}
+        {/* Aperçu rapide */}
         {!isUpcomingPlantation && snapshot && (
-          <Box mb={2}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{stage || 'Stade'}</Typography>
-              <Typography variant="subtitle2" color="text.secondary">{Math.round(progression)}%</Typography>
+          <Stack direction="column" gap={1.5} mb={2}>
+            <Box>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{stage || 'Stade'}</Typography>
+                <Typography variant="subtitle2" color="text.secondary">{Math.round(progression)}%</Typography>
+              </Box>
+              <Box sx={{ width: '100%', height: 10, bgcolor: '#e5e7eb', borderRadius: 9999 }}>
+                <Box
+                  sx={{
+                    width: `${Math.min(100, Math.max(0, progression))}%`,
+                    height: '100%',
+                    bgcolor: '#10b981',
+                    borderRadius: 9999,
+                  }}
+                />
+              </Box>
             </Box>
-            <Box sx={{ width: '100%', height: 10, bgcolor: '#e5e7eb', borderRadius: 9999 }}>
-              <Box
-                sx={{
-                  width: `${Math.min(100, Math.max(0, progression))}%`,
-                  height: '100%',
-                  bgcolor: '#10b981',
-                  borderRadius: 9999,
-                }}
+            <Box
+              display="grid"
+              gridTemplateColumns={isXs ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))'}
+              gap={1}
+            >
+              <StatCard
+                icon={WaterDrop}
+                label="Prochain arrosage"
+                value={
+                  d === 0
+                    ? `Aujourd'hui · ${snapshot.arrosageRecoQuantiteMl ?? '?'} ml`
+                    : d === 1
+                      ? `Dans 1 jour · ${snapshot.arrosageRecoQuantiteMl ?? '?'} ml`
+                      : `Dans ${d ?? '?'} jours · ${snapshot.arrosageRecoQuantiteMl ?? '?'} ml`
+                }
+              />
+              <StatCard
+                icon={Timeline}
+                label="Date recommandée"
+                value={
+                  snapshot.arrosageRecoDate
+                    ? new Date(snapshot.arrosageRecoDate).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' })
+                    : 'À confirmer'
+                }
+              />
+              <StatCard
+                icon={LocalFlorist}
+                label="Stade actuel"
+                value={`${stage || 'Stade'} · ${Math.round(progression)}%`}
+                accent="#f59e0b"
               />
             </Box>
-          </Box>
-        )}
-
-        {/* Arrosage */}
-        {!isUpcomingPlantation && snapshot && (
-          <Box display="flex" alignItems="flex-start" gap={1.5} mb={2}>
-            <WaterDrop sx={{ color: '#10b981', mt: '2px' }} />
-            <Box>
-              <Typography variant={isXs ? 'body2' : 'body1'} sx={{ fontWeight: 600 }}>
-                {d === 0
-                  ? `Prochain arrosage aujourd'hui avec ${snapshot.arrosageRecoQuantiteMl ?? ''} ml`
-                  : d === 1
-                    ? `Prochain arrosage dans 1 jour avec ${snapshot.arrosageRecoQuantiteMl ?? ''} ml`
-                    : `Prochain arrosage dans ${d ?? '?'} jours avec ${snapshot.arrosageRecoQuantiteMl ?? ''} ml`}
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {snapshot.arrosageRecoDate
-                  ? new Date(snapshot.arrosageRecoDate).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' })
-                  : 'Date inconnue'}
-              </Typography>
-            </Box>
-          </Box>
+          </Stack>
         )}
 
         {/* Meteo Today */}
@@ -276,8 +316,8 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
             sx={{
               p: 2,
               borderRadius: 2,
-              border: '1px solid #e5e7eb',
-              backgroundColor: '#f9fafb',
+              border: '1px solid #e0f2fe',
+              background: 'linear-gradient(145deg, #ecfccb, #d1fae5)',
             }}
           >
             <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
@@ -286,9 +326,35 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
             <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
               {lastSnapshotDateLabel ? `Relevé le ${lastSnapshotDateLabel}` : 'Relevé récent'} · {stage || 'Stade'} · {Math.round(progression)}% de progression
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-              {startDateLabel ? `Plantée le ${startDateLabel}` : 'Date de plantation inconnue'} · Type : {template?.type ?? '—'} · Localisation : {plantation.localisation ?? '—'}
-            </Typography>
+            <Box
+              display="grid"
+              gridTemplateColumns={isXs ? '1fr' : 'repeat(2, minmax(0, 1fr))'}
+              gap={1}
+              mt={1.5}
+            >
+              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, borderColor: '#bbf7d0', backgroundColor: 'rgba(255,255,255,0.65)' }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                  Plantation
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {startDateLabel ? `Plantée le ${startDateLabel}` : 'Date inconnue'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Type : {template?.type ?? '—'}
+                </Typography>
+              </Paper>
+              <Paper variant="outlined" sx={{ p: 1.5, borderRadius: 2, borderColor: '#bbf7d0', backgroundColor: 'rgba(255,255,255,0.65)' }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>
+                  Localisation
+                </Typography>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {plantation.localisation ?? '—'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Confirmée : {canConfirmPlanting ? 'En attente' : isPlantationConfirmed ? 'Oui' : 'Non'}
+                </Typography>
+              </Paper>
+            </Box>
           </Box>
         )}
 
@@ -298,19 +364,38 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
               <Timeline sx={{ color: '#6b7280' }} />
               <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>Derniers suivis</Typography>
             </Box>
-            {lastSnapshots.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">Aucun snapshot récent.</Typography>
+            {secondarySnapshots.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">Aucun snapshot supplémentaire.</Typography>
             ) : (
               <Box display="flex" flexDirection="column" gap={1}>
-                {lastSnapshots.map((s, idx) => (
-                  <Box key={idx} display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography variant="body2" color="text.secondary">
-                      {new Date(s.dateSnapshot).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' })}
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                      {s.stadeActuel} · {Math.round(parseFloat(s.progressionPourcentage || '0'))}%
-                    </Typography>
-                  </Box>
+                {secondarySnapshots.map((s, idx) => (
+                  <Paper
+                    key={`${s.dateSnapshot}-${idx}`}
+                    variant="outlined"
+                    sx={{
+                      p: 1.5,
+                      borderRadius: 2,
+                      borderColor: '#e5e7eb',
+                      backgroundColor: '#f9fafb',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 2,
+                    }}
+                  >
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                        {new Date(s.dateSnapshot).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' })}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        Observateur {s.auteur ?? '—'}
+                      </Typography>
+                    </Box>
+                    <Chip
+                      label={`${s.stadeActuel} · ${Math.round(parseFloat(s.progressionPourcentage || '0'))}%`}
+                      sx={{ fontWeight: 600, borderRadius: 1.5 }}
+                    />
+                  </Paper>
                 ))}
               </Box>
             )}
