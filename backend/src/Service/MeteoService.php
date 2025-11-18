@@ -15,12 +15,14 @@ class MeteoService
     private HttpClientInterface $httpClient;
     private string $baseUrl;
     private LoggerInterface $logger;
+    private string $timezone;
 
-    public function __construct(HttpClientInterface $httpClient, string $meteoBaseUrl, LoggerInterface $logger)
+    public function __construct(HttpClientInterface $httpClient, string $meteoBaseUrl, LoggerInterface $logger, string $defaultTimezone = 'UTC')
     {
         $this->httpClient = $httpClient;
         $this->baseUrl = rtrim($meteoBaseUrl, '/');
         $this->logger = $logger;
+        $this->timezone = $defaultTimezone !== '' ? $defaultTimezone : 'UTC';
     }
 
     /**
@@ -32,7 +34,7 @@ class MeteoService
             'latitude' => $latitude,
             'longitude' => $longitude,
             'daily' => 'precipitation_sum,temperature_2m_max,temperature_2m_min',
-            'timezone' => 'UTC',
+            'timezone' => $this->timezone,
             'forecast_days' => max(1, min($days, 16)),
         ];
 

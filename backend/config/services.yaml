@@ -6,6 +6,8 @@
 parameters:
     env(METEO_BASE_URL): 'https://api.open-meteo.com'
     meteo.base_url: '%env(string:METEO_BASE_URL)%'
+    env(METEO_TIMEZONE): 'Indian/Antananarivo'
+    meteo.timezone: '%env(string:METEO_TIMEZONE)%'
     env(WHATSAPP_API_BASE_URI): 'https://graph.facebook.com'
     env(WHATSAPP_API_VERSION): 'v19.0'
     env(WHATSAPP_ACCESS_TOKEN): ''
@@ -50,6 +52,19 @@ services:
     App\Service\MeteoService:
         arguments:
             $meteoBaseUrl: '%meteo.base_url%'
+            $defaultTimezone: '%meteo.timezone%'
+
+    App\Service\WateringService:
+        arguments:
+            $thresholds: '%app.watering.thresholds%'
+
+    App\Service\NotificationEngine:
+        arguments:
+            $thresholds: '%app.notifications.thresholds%'
+
+    App\Command\CleanupSnapshotsCommand:
+        arguments:
+            $retentionMonths: '%app.snapshots.retention_months%'
 
     App\Service\WhatsAppNotifier:
         arguments:

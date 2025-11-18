@@ -1,0 +1,23 @@
+parameters:
+    app.watering.thresholds:
+        rain_auto_mm: 5.0
+        rain_reduce_mm: 2.0
+        rain_tomorrow_postpone_mm: 7.0
+        temperature_high_c: 32.0
+        temperature_low_c: 10.0
+
+    app.notifications.thresholds:
+        frost_alert_min_c: 2.0
+        frost_alert_urgent_c: -2.0
+        heat_alert_min_c: 32.0
+        heat_alert_high_priority_c: 35.0
+        heat_wave_temp_c: 30.0
+        heat_wave_min_days: 2
+        rain_postpone_today_min_mm: 2.0
+        rain_postpone_multi_day_mm: 8.0
+        rain_postpone_tomorrow_min_mm: 7.0
+        excess_rain_today_min_mm: 15.0
+        excess_rain_two_day_min_mm: 25.0
+
+    app.snapshots.retention_months: 18
+

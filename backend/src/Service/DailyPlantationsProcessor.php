@@ -93,6 +93,10 @@ class DailyPlantationsProcessor
                 'lifecycle' => $lifecycle['details'] ?? [],
                 'watering_notes' => $watering['notes'] ?? [],
                 'frequency_days' => $watering['frequency_days'] ?? null,
+                'auto_watered_by_rain' => !empty($watering['auto_watered_due_to_rain']),
+                'thresholds_used' => [
+                    'watering' => $watering['thresholds'] ?? null,
+                ],
             ];
             $snapshot->setDecisionDetailsJson($decisionDetails);
             $snapshot->setMeteoDataJson([

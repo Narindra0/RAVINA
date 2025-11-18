@@ -33,6 +33,19 @@ Remplacez `/path/to/ravina/backend` par le chemin absolu vers le répertoire bac
 
 Note : La commande peut également être exécutée plus fréquemment (par exemple toutes les heures) sans risque de doublons grâce aux vérifications intégrées dans le moteur de notifications.
 
+NETTOYAGE DES SNAPSHOTS
+-----------------------
+
+Les snapshots de suivi (historique quotidien) peuvent rapidement représenter un volume important. Une commande dédiée supprime les enregistrements plus anciens que la rétention configurée (18 mois par défaut) :
+
+```bash
+php bin/console app:snapshots:cleanup            # purge normale
+php bin/console app:snapshots:cleanup --dry-run  # affiche uniquement le volume concerné
+php bin/console app:snapshots:cleanup --older-than=12  # rétention ponctuelle à 12 mois
+```
+
+La durée par défaut est définie via le paramètre `app.snapshots.retention_months` (voir `config/packages/app.yaml`).
+
 
 NOTIFICATIONS WHATSAPP
 ----------------------

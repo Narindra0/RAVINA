@@ -15,6 +15,26 @@ class SuiviSnapshotRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, SuiviSnapshot::class);
     }
+
+    public function countOlderThan(\DateTimeImmutable $threshold): int
+    {
+        return (int) $this->createQueryBuilder('s')
+            ->select('COUNT(s.id)')
+            ->where('s.dateSnapshot < :threshold')
+            ->setParameter('threshold', $threshold)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    public function deleteOlderThan(\DateTimeImmutable $threshold): int
+    {
+        return $this->createQueryBuilder('s')
+            ->delete()
+            ->where('s.dateSnapshot < :threshold')
+            ->setParameter('threshold', $threshold)
+            ->getQuery()
+            ->execute();
+    }
 }
 
 

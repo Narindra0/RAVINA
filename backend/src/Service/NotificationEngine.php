@@ -11,12 +11,33 @@ use Psr\Log\LoggerInterface;
 
 class NotificationEngine
 {
+    /**
+     * @var array<string, float|int>
+     */
+    private array $thresholds;
+
     public function __construct(
         private readonly NotificationRepository $notificationRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly WhatsAppNotifier $whatsAppNotifier,
         private readonly LoggerInterface $logger,
+        array $thresholds = [],
     ) {
+        $defaults = [
+            'frost_alert_min_c' => 2.0,
+            'frost_alert_urgent_c' => -2.0,
+            'heat_alert_min_c' => 32.0,
+            'heat_alert_high_priority_c' => 35.0,
+            'heat_wave_temp_c' => 30.0,
+            'heat_wave_min_days' => 2,
+            'rain_postpone_today_min_mm' => 2.0,
+            'rain_postpone_multi_day_mm' => 8.0,
+            'rain_postpone_tomorrow_min_mm' => 7.0,
+            'excess_rain_today_min_mm' => 15.0,
+            'excess_rain_two_day_min_mm' => 25.0,
+        ];
+
+        $this->thresholds = array_replace($defaults, $thresholds);
     }
 
     /**
@@ -39,6 +60,11 @@ class NotificationEngine
             if ($today < $startDateImmutable) {
                 return $created;
             }
+
+    private function threshold(string $key): float
+    {
+        return (float) ($this->thresholds[$key] ?? 0.0);
+    }
         }
 
         $daily = $this->extractDaily($meteoData);
@@ -68,7 +94,7 @@ class NotificationEngine
         }
 
         $minTemp = $weather['temperature_min'] ?? null;
-        if ($minTemp === null || $minTemp > 2) {
+        if ($minTemp === null || $minTemp > $this->threshold('frost_alert_min_c')) {
             return 0;
         }
 
@@ -77,7 +103,9 @@ class NotificationEngine
             return 0;
         }
 
-        $priority = $minTemp <= -2 ? Notification::PRIORITY_URGENT : Notification::PRIORITY_IMPORTANT;
+        $priority = $minTemp <= $this->threshold('frost_alert_urgent_c')
+            ? Notification::PRIORITY_URGENT
+            : Notification::PRIORITY_IMPORTANT;
         $title = sprintf('Risque de gel pour %s', $this->resolvePlantName($plantation));
         $message = sprintf(
             "La température minimale attendue descend jusqu’à %s°C. Protégez la plante pour éviter les dégâts.",
@@ -209,7 +237,7 @@ class NotificationEngine
         }
 
         $maxTemp = $weather['temperature_max'] ?? null;
-        if ($maxTemp === null || $maxTemp < 32) {
+        if ($maxTemp === null || $maxTemp < $this->threshold('heat_alert_min_c')) {
             return 0;
         }
 
@@ -218,7 +246,9 @@ class NotificationEngine
             return 0;
         }
 
-        $priority = $maxTemp >= 35 ? Notification::PRIORITY_URGENT : Notification::PRIORITY_IMPORTANT;
+        $priority = $maxTemp >= $this->threshold('heat_alert_high_priority_c')
+            ? Notification::PRIORITY_URGENT
+            : Notification::PRIORITY_IMPORTANT;
         $title = sprintf('Alerte chaleur pour %s', $this->resolvePlantName($plantation));
         $message = sprintf(
             "La température attendue aujourd'hui atteint %s°C. %sPensez à arroser légèrement et à offrir de l'ombre.",
@@ -251,14 +281,17 @@ class NotificationEngine
         }
 
         $hotDays = 0;
+        $heatWaveTemp = $this->threshold('heat_wave_temp_c');
+        $heatWaveMinDays = max(1, (int) round($this->thresholds['heat_wave_min_days'] ?? 2));
+
         foreach (array_slice($daily, 0, 3) as $forecast) {
             $max = $forecast['temperature_max'] ?? null;
-            if ($max !== null && $max >= 30) {
+            if ($max !== null && $max >= $heatWaveTemp) {
                 $hotDays++;
             }
         }
 
-        if ($hotDays < 2) {
+        if ($hotDays < $heatWaveMinDays) {
             return 0;
         }
 
@@ -279,7 +312,8 @@ class NotificationEngine
 
         $title = sprintf('Chaleur prolongée : anticipez l’arrosage (%s)', $this->resolvePlantName($plantation));
         $message = sprintf(
-            "Plusieurs journées > 30°C sont prévues. Surveillez l’humidité et prévoyez un arrosage léger avant le %s.",
+            "Plusieurs journées > %s°C sont prévues. Surveillez l’humidité et prévoyez un arrosage léger avant le %s.",
+            $this->formatTemperature($heatWaveTemp),
             $nextWatering->format('d/m/Y')
         );
 
@@ -324,7 +358,8 @@ class NotificationEngine
         }
 
         $rainToday = $todayWeather['precipitation_sum'] ?? 0;
-        if (!is_numeric($rainToday) || (float) $rainToday < 2.0) {
+        $minRainToday = $this->threshold('rain_postpone_today_min_mm');
+        if (!is_numeric($rainToday) || (float) $rainToday < $minRainToday) {
             return 0;
         }
 
@@ -333,9 +368,21 @@ class NotificationEngine
             return 0;
         }
 
-        $reportDays = (float) $rainToday >= 8 ? 2 : 1;
+        $reportDays = 1;
+        $multiDayThreshold = $this->threshold('rain_postpone_multi_day_mm');
+        if (
+            $multiDayThreshold > 0
+            && (float) $rainToday >= $multiDayThreshold
+        ) {
+            $reportDays = 2;
+        }
         $rainTomorrow = $tomorrowWeather['precipitation_sum'] ?? null;
-        if (is_numeric($rainTomorrow) && (float) $rainTomorrow >= 7) {
+        $tomorrowThreshold = $this->threshold('rain_postpone_tomorrow_min_mm');
+        if (
+            $tomorrowThreshold > 0
+            && is_numeric($rainTomorrow)
+            && (float) $rainTomorrow >= $tomorrowThreshold
+        ) {
             $reportDays = max($reportDays, 2);
         }
 
@@ -375,7 +422,9 @@ class NotificationEngine
         $todayRain = (float) ($daily[0]['precipitation_sum'] ?? 0);
         $tomorrowRain = (float) ($daily[1]['precipitation_sum'] ?? 0);
 
-        if ($todayRain < 15 && ($todayRain + $tomorrowRain) < 25) {
+        $todayThreshold = $this->threshold('excess_rain_today_min_mm');
+        $twoDayThreshold = $this->threshold('excess_rain_two_day_min_mm');
+        if ($todayRain < $todayThreshold && ($todayRain + $tomorrowRain) < $twoDayThreshold) {
             return 0;
         }
 
