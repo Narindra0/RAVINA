@@ -24,7 +24,7 @@ RUN set -eux; \
 WORKDIR ${APP_DIR}
 
 # Copy composer files from backend to leverage caching
-COPY backend/composer.json backend/composer.lock ./
+COPY composer.json composer.lock 
 
 # Install Composer (if not already present) and dependencies
 RUN set -eux; \
@@ -33,8 +33,6 @@ RUN set -eux; \
     fi; \
     composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
 
-# Copy the rest of the backend source code
-COPY backend/ .
 
 # Ensure writable directories belong to www-data
 RUN set -eux; \
