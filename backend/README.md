@@ -11,27 +11,27 @@ SUGGESTION_OWNER_ID=1
 Le contrôleur `App\\Controller\\PlantSuggestionController` lit cette variable via `$_ENV`.
 
 
-CONFIGURATION CRON
-------------------
+PLANIFICATION (Railway ou autre Scheduler en ligne)
+---------------------------------------------------
 
 La commande `app:plantations:process` doit être exécutée au moins deux fois par jour pour générer les notifications d'arrosage :
 
-- **Matin (7h00-8h00)** : Envoie les notifications "Arrosage du {nom} aujourd'hui" si l'arrosage est prévu aujourd'hui
-- **Après-midi (16h00)** : Envoie les rappels "N'oubliez pas d'arroser votre {nom}" si l'arrosage prévu aujourd'hui n'a pas encore été fait
+- **Matin (7h00-8h00)** : envoie les notifications "Arrosage du {nom} aujourd'hui" si l'arrosage est prévu aujourd'hui
+- **Après-midi (16h00)** : envoie les rappels "N'oubliez pas d'arroser votre {nom}" si l'arrosage prévu aujourd'hui n'a pas encore été fait
 
-### Configuration crontab recommandée
+Sur Railway, créez un Cron Job (ou Scheduler équivalent) avec la commande suivante :
 
 ```bash
-# Matin : notification "Arrosage aujourd'hui"
-0 7 * * * cd /path/to/ravina/backend && php bin/console app:plantations:process
-
-# Après-midi : rappel si non fait
-0 16 * * * cd /path/to/ravina/backend && php bin/console app:plantations:process
+./bin/run-plantations-process.sh
 ```
 
-Remplacez `/path/to/ravina/backend` par le chemin absolu vers le répertoire backend de votre installation RAVINA.
+Recommandations :
 
-Note : La commande peut également être exécutée plus fréquemment (par exemple toutes les heures) sans risque de doublons grâce aux vérifications intégrées dans le moteur de notifications.
+1. **Deux jobs distincts** (ex. `0 7 * * *` et `0 16 * * *`) pour couvrir matin/fin d’après-midi.  
+2. **Variables d’environnement** identiques au service backend (DB, JWT, WhatsApp, etc.).  
+3. **Logs** : surveillez la sortie du job dans Railway + `var/log/plantations.log` pour confirmer les envois.
+
+Note : Vous pouvez exécuter la commande (ou le script) plus souvent (toutes les heures) sans risque de doublons grâce aux vérifications intégrées dans le moteur de notifications.
 
 NETTOYAGE DES SNAPSHOTS
 -----------------------

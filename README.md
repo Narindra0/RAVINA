@@ -247,18 +247,17 @@ Les notifications météo/rappels et les snapshots automatiques sont générés 
 
 ```
 cd backend
-php bin/console app:plantations:process --env=prod >> var/log/plantations.log 2>&1
+./bin/run-plantations-process.sh >> var/log/plantations.log 2>&1
 ```
 
-Planifiez cette commande quotidiennement :
+En production nous n’utilisons plus de tâches Windows locales : créez un **Railway Cron Job** (ou équivalent “scheduler” cloud) qui exécute le script `bin/run-plantations-process.sh` (ou directement `php bin/console app:plantations:process --env=prod`) avec les mêmes variables d’environnement que votre service backend (`APP_ENV=prod`, accès DB…). Exemple Railway :
 
-- **Linux (cron)**  
-  `0 6 * * * /usr/bin/php /var/www/RAVINA/backend/bin/console app:plantations:process --env=prod >> /var/www/RAVINA/backend/var/log/plantations.log 2>&1`
+1. Nouveau service → **Cron Job**  
+2. Commande d’exécution : `php bin/console app:plantations:process --env=prod`  
+3. Horaire recommandé : `0 6 * * *` (06h00 UTC) ou `@daily`  
+4. Variables d’environnement identiques au service principal
 
-- **Windows Task Scheduler**  
-  `pwsh.exe -Command "cd D:\OrientMada\RAVINA\backend; php bin/console app:plantations:process --env=prod >> var\log\plantations.log 2>&1"`
-
-Surveillez `var/log/plantations.log` et `var/log/{dev,prod}.log` pour confirmer l’exécution et diagnostiquer les erreurs éventuelles.
+Les logs standard du job sont visibles dans l’interface Railway. Gardez également un œil sur `var/log/plantations.log` et `var/log/{dev,prod}.log` côté application pour vérifier les exécutions.
 
 ### Auto-relance lors de la connexion
 - Si le cron n’a pas pu s’exécuter (panne réseau/Railway), la première connexion utilisateur du jour déclenche automatiquement le même traitement (`DailyProcessingScheduler`).  
