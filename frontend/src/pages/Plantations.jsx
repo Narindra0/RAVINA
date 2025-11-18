@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../lib/axios';
 import Sidebar from './Sidebar';
 import { LocalFlorist, WaterDrop, LocationOn, Menu as MenuIcon, AddCircleOutline, CalendarMonth } from '@mui/icons-material';
-import { IconButton, Box, Button } from '@mui/material';
+import { IconButton, Box, Button, Typography } from '@mui/material';
 import '../styles/Plantations.styles.css';
 import PlantationDetailsModal from './PlantationDetailsModal';
 import CreateUserPlantationModal from './CreateUserPlantationModal';
@@ -107,6 +107,7 @@ export default function Plantations() {
   const [isSidebarMobileOpen, setIsSidebarMobileOpen] = useState(false);
   const [selectedPlantation, setSelectedPlantation] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const toggleSidebarMobile = () => {
     setIsSidebarMobileOpen((v) => !v);
@@ -157,6 +158,23 @@ export default function Plantations() {
     window.__refreshPlantations = fetchPlantations;
   }, []);
 
+  const filteredPlantations = plantations.filter((plantation) => {
+    const isPlantationConfirmed = plantation?.datePlantationConfirmee !== null && plantation?.datePlantationConfirmee !== undefined;
+    if (statusFilter === 'waiting') {
+      return !isPlantationConfirmed;
+    }
+    if (statusFilter === 'active') {
+      return isPlantationConfirmed;
+    }
+    return true;
+  });
+
+  const filterOptions = [
+    { value: 'all', label: 'Tout' },
+    { value: 'waiting', label: 'En attente' },
+    { value: 'active', label: 'Actives' },
+  ];
+
   return (
     <div className="plantations-page">
       {/* Bouton menu mobile */}
@@ -182,24 +200,84 @@ export default function Plantations() {
       <Sidebar isMobileOpen={isSidebarMobileOpen} onClose={toggleSidebarMobile} />
       <main className="plantations-content">
         <header className="plantations-header">
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 2,
+              flexWrap: 'wrap',
+            }}
+          >
             <h1 style={{ margin: 0 }}>Mes Plantations</h1>
-            <Button
-              variant="contained"
-              startIcon={<AddCircleOutline />}
-              onClick={() => setShowAddModal(true)}
+            <Box
               sx={{
-                backgroundColor: '#10b981',
-                ':hover': { backgroundColor: '#059669' },
-                borderRadius: '10px',
-                minWidth: { xs: 40, md: 120 },
-                px: { xs: 1.25, md: 2 },
+                display: 'flex',
+                alignItems: { xs: 'flex-start', md: 'center' },
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: 1.5,
               }}
             >
-              <span style={{ display: 'none' }} className="btn-text-xs">.</span>
-              <span className="btn-text-md" style={{ display: 'none' }}>Planter</span>
-            </Button>
-          </div>
+              <Box
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <Typography variant="body2" sx={{ fontWeight: 600, color: '#1f2937' }}>
+                  Triage :
+                </Typography>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  {filterOptions.map((option) => {
+                    const isActive = statusFilter === option.value;
+                    return (
+                      <Button
+                        key={option.value}
+                        variant={isActive ? 'contained' : 'outlined'}
+                        size="small"
+                        onClick={() => setStatusFilter(option.value)}
+                        sx={{
+                          textTransform: 'none',
+                          borderRadius: '999px',
+                          px: 2,
+                          borderColor: isActive ? '#10b981' : '#e5e7eb',
+                          backgroundColor: isActive ? '#10b981' : '#fff',
+                          color: isActive ? '#fff' : '#374151',
+                          fontWeight: isActive ? 700 : 500,
+                          ':hover': {
+                            backgroundColor: isActive ? '#059669' : '#f3f4f6',
+                          },
+                        }}
+                      >
+                        {option.label}
+                      </Button>
+                    );
+                  })}
+                </Box>
+              </Box>
+              <Button
+                variant="contained"
+                startIcon={<AddCircleOutline />}
+                onClick={() => setShowAddModal(true)}
+                sx={{
+                  background: 'linear-gradient(135deg, #0d9488, #059669)',
+                  ':hover': { background: 'linear-gradient(135deg, #0f766e, #047857)' },
+                  borderRadius: '999px',
+                  px: { xs: 2.5, md: 3.5 },
+                  py: 1.25,
+                  minWidth: { xs: 'auto', md: 140 },
+                  boxShadow: '0 8px 20px rgba(5, 150, 105, 0.25)',
+                  fontWeight: 700,
+                  textTransform: 'none',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                }}
+              >
+                Planter
+              </Button>
+            </Box>
+          </Box>
         </header>
 
         {loading && (
@@ -210,7 +288,7 @@ export default function Plantations() {
         {error && <p className="error-message">{error}</p>}
 
         <section className="plantations-list">
-          {plantations.map((plantation) => {
+          {filteredPlantations.map((plantation) => {
             const template = plantation.plantTemplate;
             const templateName = template?.name ?? 'cette plante';
             const plantingSchedule = getPlantingScheduleState(plantation);
@@ -389,9 +467,13 @@ export default function Plantations() {
             );
           })}
 
-          {plantations.length === 0 && !loading && !error && (
+          {filteredPlantations.length === 0 && !loading && !error && (
             <div className="empty-state">
-              <p>Vous n'avez pas encore créé de plantation.</p>
+              <p>
+                {statusFilter === 'all'
+                  ? "Vous n'avez pas encore créé de plantation."
+                  : "Aucune plantation ne correspond à ce filtre."}
+              </p>
             </div>
           )}
         </section>
