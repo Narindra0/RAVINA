@@ -60,11 +60,6 @@ class NotificationEngine
             if ($today < $startDateImmutable) {
                 return $created;
             }
-
-    private function threshold(string $key): float
-    {
-        return (float) ($this->thresholds[$key] ?? 0.0);
-    }
         }
 
         $daily = $this->extractDaily($meteoData);
@@ -82,6 +77,11 @@ class NotificationEngine
         $created += $this->handleWateringReminder($plantation, $lastSnapshot);
 
         return $created;
+    }
+
+    private function threshold(string $key): float
+    {
+        return (float) ($this->thresholds[$key] ?? 0.0);
     }
 
     /**
