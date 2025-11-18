@@ -54,6 +54,7 @@ class NotificationEngine
             // Ne pas envoyer de notifications si la plantation est déjà confirmée
             if (!$plantation->isPlantationConfirmee()) {
                 $created += $this->handleUpcomingPlanting($plantation, $today, $startDateImmutable);
+                $created += $this->handlePlantingDueToday($plantation, $today, $startDateImmutable);
                 $created += $this->handlePlantingReminder($plantation, $today, $startDateImmutable);
             }
 
@@ -181,6 +182,40 @@ class NotificationEngine
         return $created;
     }
 
+    private function handlePlantingDueToday(UserPlantation $plantation, \DateTimeImmutable $today, \DateTimeImmutable $startDate): int
+    {
+        if ($plantation->isPlantationConfirmee()) {
+            return 0;
+        }
+
+        if ($startDate->format('Y-m-d') !== $today->format('Y-m-d')) {
+            return 0;
+        }
+
+        $since = $today->sub(new \DateInterval('P1D'));
+        if ($this->notificationRepository->hasRecentNotification($plantation, 'RAPPEL_PLANTATION_AUJOURD_HUI', $since)) {
+            return 0;
+        }
+
+        $plantName = $this->resolvePlantName($plantation);
+        $title = sprintf('Plantation prévue aujourd’hui pour %s', $plantName);
+        $message = sprintf(
+            'Votre %s est planifiée pour aujourd’hui. Installez-la dès que possible afin de respecter le calendrier.',
+            $plantName
+        );
+
+        $this->createNotification(
+            $plantation,
+            'RAPPEL_PLANTATION_AUJOURD_HUI',
+            Notification::PRIORITY_IMPORTANT,
+            $title,
+            $message
+        );
+        $this->logNotification('RAPPEL_PLANTATION_AUJOURD_HUI', $plantation);
+
+        return 1;
+    }
+
     /**
      * Gère les rappels en cas de retard de plantation
      */
@@ -210,7 +245,7 @@ class NotificationEngine
         $plantName = $this->resolvePlantName($plantation);
         $title = sprintf('Rappel : plantation de la %s en retard', $plantName);
         $message = sprintf(
-            'Plantation prévue, il y a %d jour%s... Vous avez oublié ? N\'oubliez pas de confirmer votre plantation.',
+            'Plantation prévue il y a %d jour%s... Vous avez oublié ? N\'oubliez pas de confirmer votre plantation.',
             $daysLate,
             $daysLate > 1 ? 's' : ''
         );
