@@ -17,7 +17,12 @@ const getPlantImagePath = (imageSlug) => {
   return `/images/plantes/${imageSlug}`;
 };
 
-const getStatusColor = (status) => {
+const getStatusColor = (plantation) => {
+  const isPlantationConfirmed = plantation?.datePlantationConfirmee !== null && plantation?.datePlantationConfirmee !== undefined;
+  if (!isPlantationConfirmed) {
+    return '#f59e0b';
+  }
+  const status = plantation?.etatActuel;
   const statusMap = {
     'ACTIVE': '#10b981',
     'HARVESTED': '#f59e0b',
@@ -27,14 +32,19 @@ const getStatusColor = (status) => {
   return statusMap[status] || '#10b981';
 };
 
-const getStatusLabel = (status) => {
+const getStatusLabel = (plantation) => {
+  const isPlantationConfirmed = plantation?.datePlantationConfirmee !== null && plantation?.datePlantationConfirmee !== undefined;
+  if (!isPlantationConfirmed) {
+    return 'En attente';
+  }
+  const status = plantation?.etatActuel;
   const labelMap = {
     'ACTIVE': 'Active',
     'HARVESTED': 'Récoltée',
     'ARCHIVED': 'Archivée',
     'PAUSED': 'En pause',
   };
-  return labelMap[status] || status;
+  return labelMap[status] || status || 'Active';
 };
 
 const getCurrentStage = (cyclePhasesJson, progression) => {
@@ -203,8 +213,8 @@ export default function Plantations() {
             const template = plantation.plantTemplate;
             const snapshot = plantation.suiviSnapshots?.[0];
             const progression = snapshot ? parseFloat(snapshot.progressionPourcentage) : 0;
-            const statusColor = getStatusColor(plantation.etatActuel);
-            const statusLabel = getStatusLabel(plantation.etatActuel);
+            const statusColor = getStatusColor(plantation);
+            const statusLabel = getStatusLabel(plantation);
             const plantImage = getPlantImagePath(template?.imageSlug);
             const currentStage = getCurrentStage(template?.cyclePhasesJson, progression);
             const startDate = plantation.datePlantation;
@@ -303,7 +313,7 @@ export default function Plantations() {
                   </div>
                 )}
 
-                {!isUpcomingPlantation && snapshot && (
+                {isPlantationConfirmed && !isUpcomingPlantation && snapshot && (
                   <>
                     <div className="plantation-growth-section">
                       <div className="stage-label-top">

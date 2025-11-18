@@ -305,6 +305,10 @@ class NotificationEngine
         ?array $tomorrowWeather,
         ?SuiviSnapshot $lastSnapshot
     ): int {
+        if (!$this->isOutdoor($plantation)) {
+            return 0;
+        }
+
         if (!$lastSnapshot) {
             return 0;
         }

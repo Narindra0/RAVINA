@@ -78,6 +78,10 @@ class DailyPlantationsProcessor
             $lifecycle = $this->lifecycleService->compute($plantation);
             $watering = $this->wateringService->compute($plantation, $meteo, $lastSnapshot);
 
+            if (!empty($watering['auto_watered_due_to_rain'])) {
+                $plantation->setLastManualWateringAt(new \DateTimeImmutable());
+            }
+
             $snapshot = new SuiviSnapshot();
             $snapshot->setUserPlantation($plantation);
             $snapshot->setDateSnapshot(new \DateTimeImmutable());

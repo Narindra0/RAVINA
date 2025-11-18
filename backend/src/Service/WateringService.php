@@ -42,30 +42,42 @@ class WateringService
 
         $today = $meteoData['daily'][0] ?? null;
         $tomorrow = $meteoData['daily'][1] ?? null;
+        $isOutdoor = $this->isOutdoor($plantation);
+        $autoWateredDueToRain = false;
+        $heavyRainMessage = "L'arrosage est reporté en raison des fortes pluies annoncées aujourd'hui.";
 
-        if (is_array($today) && isset($today['precipitation_sum']) && $today['precipitation_sum'] !== null) {
-            if ($today['precipitation_sum'] >= 5) {
-                $nextDate = $nextDate->add(new \DateInterval('P1D'));
-                $decisions[] = 'Report d\'arrosage (+1 jour) car pluie >= 5mm prévue aujourd\'hui.';
-            } elseif ($today['precipitation_sum'] >= 2) {
+        $todayRain = is_array($today) && isset($today['precipitation_sum'])
+            ? (float) $today['precipitation_sum']
+            : null;
+
+        if ($isOutdoor && $todayRain !== null && $todayRain >= 5.0) {
+            $nextDate = $todayDate->add($interval);
+            $decisions = [$heavyRainMessage];
+            $autoWateredDueToRain = true;
+        } else {
+            if ($isOutdoor && $todayRain !== null && $todayRain >= 2.0) {
                 $quantity *= 0.8;
                 $decisions[] = 'Réduction de 20% car pluie modérée attendue.';
             }
-        }
 
-        if (is_array($tomorrow) && isset($tomorrow['precipitation_sum']) && $tomorrow['precipitation_sum'] >= 7) {
-            $nextDate = $nextDate->add(new \DateInterval('P1D'));
-            $decisions[] = 'Report supplémentaire (+1 jour) car forte pluie attendue demain.';
-        }
+            $tomorrowRain = is_array($tomorrow) && isset($tomorrow['precipitation_sum'])
+                ? (float) $tomorrow['precipitation_sum']
+                : null;
 
-        $maxTemp = $today['temperature_max'] ?? null;
-        if ($maxTemp !== null) {
-            if ($maxTemp >= 32) {
-                $quantity *= 1.2;
-                $decisions[] = 'Augmentation de 20% car température max >= 32°C.';
-            } elseif ($maxTemp <= 10) {
-                $quantity *= 0.9;
-                $decisions[] = 'Réduction de 10% car température max <= 10°C.';
+            if ($isOutdoor && $tomorrowRain !== null && $tomorrowRain >= 7.0) {
+                $nextDate = $nextDate->add(new \DateInterval('P1D'));
+                $decisions[] = 'Report supplémentaire (+1 jour) car forte pluie attendue demain.';
+            }
+
+            $maxTemp = $today['temperature_max'] ?? null;
+            if ($maxTemp !== null) {
+                if ($maxTemp >= 32) {
+                    $quantity *= 1.2;
+                    $decisions[] = 'Augmentation de 20% car température max >= 32°C.';
+                } elseif ($maxTemp <= 10) {
+                    $quantity *= 0.9;
+                    $decisions[] = 'Réduction de 10% car température max <= 10°C.';
+                }
             }
         }
 
@@ -76,6 +88,7 @@ class WateringService
             'quantity' => $quantity,
             'notes' => $decisions,
             'frequency_days' => $frequencyDays,
+            'auto_watered_due_to_rain' => $autoWateredDueToRain,
         ];
     }
 
@@ -117,6 +130,25 @@ class WateringService
         return $dateTime instanceof \DateTimeImmutable
             ? $dateTime
             : \DateTimeImmutable::createFromInterface($dateTime);
+    }
+
+    private function isOutdoor(UserPlantation $plantation): bool
+    {
+        $location = mb_strtolower((string) $plantation->getLocalisation());
+        foreach (['balcon', 'terrasse', 'jardin', 'extérieur', 'exterieur', 'patio', 'cour'] as $keyword) {
+            if (str_contains($location, $keyword)) {
+                return true;
+            }
+        }
+
+        $templateLocation = mb_strtolower((string) $plantation->getPlantTemplate()?->getLocation());
+        foreach (['exterieur', 'extérieur', 'plein air'] as $keyword) {
+            if (str_contains($templateLocation, $keyword)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 
