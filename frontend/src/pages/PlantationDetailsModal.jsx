@@ -13,10 +13,11 @@ import {
   Paper,
   Stack,
 } from '@mui/material'
-import { Close, LocalFlorist, LocationOn, Timeline, CalendarMonth } from '@mui/icons-material'
+import { Close, LocalFlorist, LocationOn, Timeline } from '@mui/icons-material'
 import { useTheme } from '@mui/material/styles'
 import useMediaQuery from '@mui/material/useMediaQuery'
 import { api } from '../lib/axios'
+import { getPlantingScheduleState } from '../utils/plantationSchedule'
 
 const getStatusColor = (status) => {
   const statusMap = {
@@ -174,8 +175,6 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
   if (!plantation) return null
   const template = plantation.plantTemplate || {}
   const startDate = plantation.datePlantation
-  const daysUntilPlanting = startDate ? daysUntil(startDate) : null
-  const isUpcomingPlantation = daysUntilPlanting !== null && daysUntilPlanting > 0
   const isPlantationConfirmed = plantation.datePlantationConfirmee !== null && plantation.datePlantationConfirmee !== undefined
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -184,9 +183,11 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
     plantingDate.setHours(0, 0, 0, 0)
   }
   const canConfirmPlanting = !isPlantationConfirmed && plantingDate && plantingDate <= today
+  const plantingSchedule = getPlantingScheduleState(plantation)
+  const isAwaitingPlanting = ['waiting', 'today', 'overdue'].includes(plantingSchedule.type)
   const rawSnapshots = Array.isArray(plantation.suiviSnapshots) ? plantation.suiviSnapshots : []
-  const snapshot = isUpcomingPlantation ? null : rawSnapshots[0]
-  const historicalSnapshots = isUpcomingPlantation ? [] : rawSnapshots.slice(1)
+  const snapshot = isPlantationConfirmed ? rawSnapshots[0] : null
+  const historicalSnapshots = isPlantationConfirmed ? rawSnapshots.slice(1) : []
   const progression = snapshot ? parseFloat(snapshot.progressionPourcentage) : 0
   const statusColor = getStatusColor(plantation.etatActuel)
   const startDateLabel = startDate
@@ -202,16 +203,7 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
   const stage = snapshot?.stadeActuel
   const meteoToday = snapshot?.meteoDataJson?.daily?.[0]
   const currentDecisionDetails = normalizeDecisionDetails(snapshot?.decisionDetailsJson)
-  const hasCurrentAdvice =
-    currentDecisionDetails.wateringNotes.length > 0 ||
-    currentDecisionDetails.frequencyDays !== null ||
-    currentDecisionDetails.autoWateredByRain ||
-    !!(
-      currentDecisionDetails.lifecycle &&
-      (currentDecisionDetails.lifecycle.days_elapsed !== undefined ||
-        currentDecisionDetails.lifecycle.expected_days !== undefined ||
-        currentDecisionDetails.lifecycle.stage_source)
-    )
+  const hasCurrentAdvice = currentDecisionDetails.wateringNotes.length > 0
   const isOutdoor = isOutdoorLocation(plantation)
   const lastSnapshotDateLabel = snapshot?.dateSnapshot
     ? new Date(snapshot.dateSnapshot).toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' })
@@ -235,6 +227,30 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
   const narrativeLine = snapshot
     ? `D'après le relevé du ${lastSnapshotDateLabel ?? 'jour en cours'}, la plante ${plantLabel}, plantée le ${startDateLabel ?? 'date inconnue'}, est au stade de ${stage ?? 'à préciser'} avec une progression de ${roundedProgression}%.`
     : ''
+  const templateName = template?.name ?? 'cette plante'
+  const plantingNotice = (() => {
+    if (!isAwaitingPlanting) return null
+    if (plantingSchedule.type === 'waiting') {
+      return {
+        severity: 'info',
+        text: plantingSchedule.daysRemaining === 1
+          ? 'Plantation prévue dans 1 jour.'
+          : `Plantation prévue dans ${plantingSchedule.daysRemaining} jours.`,
+      }
+    }
+    if (plantingSchedule.type === 'today') {
+      return {
+        severity: 'info',
+        text: `Plantation prévue pour aujourd'hui.`,
+      }
+    }
+    return {
+      severity: 'warning',
+      text: plantingSchedule.daysLate === 1
+        ? `Plantation prévue hier. Nous recommandons de planter ${templateName} aujourd'hui.`
+        : `Plantation prévue il y a ${plantingSchedule.daysLate} jours. Nous recommandons de planter ${templateName} dès que possible.`,
+    }
+  })()
 
   return (
     <Dialog
@@ -286,40 +302,37 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
           <Alert severity="error" sx={{ mb: 1 }}>{actionError}</Alert>
         )}
 
+        {/* Localisation */}
+        <Box display="flex" alignItems="center" gap={1} mb={2}>
+          <LocationOn sx={{ color: '#ef4444' }} />
+          <Typography variant="body2" color="text.secondary">
+            {plantation.localisation}
+          </Typography>
+        </Box>
+
+        {plantingNotice && (
+          <Alert
+            severity={plantingNotice.severity}
+            sx={{
+              mb: 2,
+              borderRadius: 2,
+            }}
+          >
+            <Typography variant="body1" sx={{ fontWeight: 600 }}>
+              {plantingNotice.text}
+            </Typography>
+            {startDateLabel && (
+              <Typography variant="body2" color="text.secondary">
+                {`Date planifiée : ${startDateLabel}`}
+              </Typography>
+            )}
+          </Alert>
+        )}
+
         {isPlantationConfirmed && (
           <>
-            {/* Localisation */}
-            <Box display="flex" alignItems="center" gap={1} mb={2}>
-              <LocationOn sx={{ color: '#ef4444' }} />
-              <Typography variant="body2" color="text.secondary">
-                {plantation.localisation}
-              </Typography>
-            </Box>
-
-            {/* Plantation à venir */}
-            {isUpcomingPlantation && (
-              <Box mb={2} display="flex" alignItems="flex-start" gap={1.5}>
-                <CalendarMonth sx={{ color: '#10b981', mt: '2px' }} />
-                <Box>
-                  <Typography variant={isXs ? 'body2' : 'body1'} sx={{ fontWeight: 600 }}>
-                    {daysUntilPlanting === 1
-                      ? 'Plantation prévue dans 1 jour'
-                      : `Plantation prévue dans ${daysUntilPlanting} jours`}
-                  </Typography>
-                  {startDateLabel && (
-                    <Typography variant="body2" color="text.secondary">
-                      {`Date planifiée : ${startDateLabel}`}
-                    </Typography>
-                  )}
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    Préparez le matériel et vos conditions de culture avant cette date.
-                  </Typography>
-                </Box>
-              </Box>
-            )}
-
             {/* Aperçu rapide */}
-            {!isUpcomingPlantation && snapshot && (
+            {snapshot && (
               <Stack direction="column" gap={1.5} mb={2}>
                 <Box>
                   <Box display="flex" justifyContent="space-between" alignItems="center" mb={0.5}>
@@ -374,7 +387,7 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
             )}
 
             {/* Conseils personnalisés */}
-            {!isUpcomingPlantation && snapshot && hasCurrentAdvice && (
+            {snapshot && hasCurrentAdvice && (
               <Box
                 mb={2}
                 sx={{
@@ -385,7 +398,7 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
                 }}
               >
                 <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-                  Conseils personnalisés
+                  Détails Plantation
                 </Typography>
                 <Stack spacing={1} mt={1.25}>
                   {currentDecisionDetails.wateringNotes.map((note, idx) => (
@@ -398,7 +411,7 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
             )}
 
         {/* Meteo Today */}
-        {!isUpcomingPlantation && snapshot && isOutdoor && (
+        {snapshot && isOutdoor && (
           meteoToday ? (
             <Box
               mb={2}
@@ -450,7 +463,7 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
 
             <Divider sx={{ my: 1.5 }} />
 
-            {!isUpcomingPlantation && snapshot && (
+            {snapshot && (
               <Box
                 mb={2}
                 sx={{
@@ -469,7 +482,7 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
               </Box>
             )}
 
-            {!isUpcomingPlantation && (
+            {snapshot && (
               <Box>
                 <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
                   <Box display="flex" alignItems="center" gap={1}>
@@ -561,10 +574,10 @@ export default function PlantationDetailsModal({ open, onClose, plantation }) {
           <Button
             onClick={handleWater}
             variant="contained"
-            disabled={actionLoading || isUpcomingPlantation}
+            disabled={actionLoading || isAwaitingPlanting}
             sx={{ backgroundColor: '#10b981', ':hover': { backgroundColor: '#059669' } }}
           >
-            {isUpcomingPlantation ? 'Disponible après plantation' : actionLoading ? '...' : "J'ai arrosé"}
+            {isAwaitingPlanting ? 'Disponible après plantation' : actionLoading ? '...' : "J'ai arrosé"}
           </Button>
         )}
       </Box>

@@ -6,6 +6,7 @@ import { IconButton, Box, Button } from '@mui/material';
 import '../styles/Plantations.styles.css';
 import PlantationDetailsModal from './PlantationDetailsModal';
 import CreateUserPlantationModal from './CreateUserPlantationModal';
+import { getPlantingScheduleState } from '../utils/plantationSchedule';
 
 const getPlantImagePath = (imageSlug) => {
   if (!imageSlug) {
@@ -211,24 +212,9 @@ export default function Plantations() {
         <section className="plantations-list">
           {plantations.map((plantation) => {
             const template = plantation.plantTemplate;
-            const snapshot = plantation.suiviSnapshots?.[0];
-            const progression = snapshot ? parseFloat(snapshot.progressionPourcentage) : 0;
-            const statusColor = getStatusColor(plantation);
-            const statusLabel = getStatusLabel(plantation);
-            const plantImage = getPlantImagePath(template?.imageSlug);
-            const currentStage = getCurrentStage(template?.cyclePhasesJson, progression);
+            const templateName = template?.name ?? 'cette plante';
+            const plantingSchedule = getPlantingScheduleState(plantation);
             const startDate = plantation.datePlantation;
-            const daysUntilPlanting = startDate ? daysUntil(startDate) : null;
-            const isUpcomingPlantation = daysUntilPlanting !== null && daysUntilPlanting > 0;
-            const isPlantationConfirmed = plantation.datePlantationConfirmee !== null && plantation.datePlantationConfirmee !== undefined;
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const plantingDate = startDate ? new Date(startDate) : null;
-            if (plantingDate) {
-              plantingDate.setHours(0, 0, 0, 0);
-            }
-            const isPlantingOverdue = !isPlantationConfirmed && plantingDate && plantingDate < today;
-            const daysLate = isPlantingOverdue && plantingDate ? Math.floor((today - plantingDate) / (1000 * 60 * 60 * 24)) : 0;
             const startDateLabel = startDate
               ? new Date(startDate).toLocaleDateString('fr-FR', {
                   year: 'numeric',
@@ -236,6 +222,46 @@ export default function Plantations() {
                   day: 'numeric',
                 })
               : null;
+            const snapshot = plantation.suiviSnapshots?.[0];
+            const progression = snapshot ? parseFloat(snapshot.progressionPourcentage) : 0;
+            const statusColor = getStatusColor(plantation);
+            const statusLabel = getStatusLabel(plantation);
+            const plantImage = getPlantImagePath(template?.imageSlug);
+            const currentStage = getCurrentStage(template?.cyclePhasesJson, progression);
+            const isPlantationConfirmed = plantation.datePlantationConfirmee !== null && plantation.datePlantationConfirmee !== undefined;
+            const hasPrePlantingState = ['waiting', 'today', 'overdue'].includes(plantingSchedule.type);
+            const plantingStateMessage = (() => {
+              if (!hasPrePlantingState) return null;
+              if (plantingSchedule.type === 'waiting') {
+                return {
+                  title: 'Plantation prévue',
+                  text: plantingSchedule.daysRemaining === 1
+                    ? 'Plantation prévue dans 1 jour.'
+                    : `Plantation prévue dans ${plantingSchedule.daysRemaining} jours.`,
+                  backgroundColor: '#ecfdf5',
+                  iconColor: '#10b981',
+                  textColor: '#065f46',
+                };
+              }
+              if (plantingSchedule.type === 'today') {
+                return {
+                  title: 'Plantation prévue',
+                  text: `Plantation prévue pour aujourd'hui.`,
+                  backgroundColor: '#dbeafe',
+                  iconColor: '#2563eb',
+                  textColor: '#1e3a8a',
+                };
+              }
+              return {
+                title: 'Plantation en retard',
+                text: plantingSchedule.daysLate === 1
+                  ? `Plantation prévue hier. Nous recommandons de planter ${templateName} aujourd'hui.`
+                  : `Plantation prévue il y a ${plantingSchedule.daysLate} jours. Nous recommandons de planter ${templateName} dès que possible.`,
+                backgroundColor: '#fef3c7',
+                iconColor: '#f59e0b',
+                textColor: '#92400e',
+              };
+            })();
 
             return (
               <article
@@ -276,20 +302,26 @@ export default function Plantations() {
                   </div>
                 </div>
 
-                {isUpcomingPlantation && (
-                  <div className="plantation-watering-section">
-                    <CalendarMonth className="watering-icon" />
+                {plantingStateMessage && (
+                  <div
+                    className="plantation-watering-section"
+                    style={{
+                      backgroundColor: plantingStateMessage.backgroundColor,
+                      padding: '12px',
+                      borderRadius: '8px',
+                      marginBottom: '12px',
+                    }}
+                  >
+                    <CalendarMonth className="watering-icon" style={{ color: plantingStateMessage.iconColor }} />
                     <div className="watering-texts">
-                      <p className="watering-text">
-                        {(() => {
-                          if (daysUntilPlanting === 1) {
-                            return 'À planter dans 1 jour';
-                          }
-                          return `À planter dans ${daysUntilPlanting} jours`;
-                        })()}
+                      <p className="watering-text" style={{ color: plantingStateMessage.textColor, fontWeight: 600 }}>
+                        {plantingStateMessage.title}
+                      </p>
+                      <p className="watering-subtext" style={{ color: plantingStateMessage.textColor }}>
+                        {plantingStateMessage.text}
                       </p>
                       {startDateLabel && (
-                        <p className="watering-subtext">
+                        <p className="watering-subtext" style={{ color: plantingStateMessage.textColor }}>
                           {`Date prévue : ${startDateLabel}`}
                         </p>
                       )}
@@ -297,23 +329,7 @@ export default function Plantations() {
                   </div>
                 )}
 
-                {isPlantingOverdue && (
-                  <div className="plantation-watering-section" style={{ backgroundColor: '#fef3c7', padding: '12px', borderRadius: '8px', marginBottom: '12px' }}>
-                    <CalendarMonth className="watering-icon" style={{ color: '#f59e0b' }} />
-                    <div className="watering-texts">
-                      <p className="watering-text" style={{ color: '#92400e', fontWeight: 600 }}>
-                        {`Plantation prévue, il y a ${daysLate} jour${daysLate > 1 ? 's' : ''}... Vous avez oublié ?`}
-                      </p>
-                      {startDateLabel && (
-                        <p className="watering-subtext" style={{ color: '#78350f' }}>
-                          {`Date prévue : ${startDateLabel}`}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {isPlantationConfirmed && !isUpcomingPlantation && snapshot && (
+                {isPlantationConfirmed && snapshot && (
                   <>
                     <div className="plantation-growth-section">
                       <div className="stage-label-top">
