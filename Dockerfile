@@ -2,7 +2,10 @@ FROM php:8.2-apache
 
 ENV COMPOSER_ALLOW_SUPERUSER=1 \
     APP_DIR=/var/www/html \
-    APACHE_DOCUMENT_ROOT=/var/www/html/public
+    APACHE_DOCUMENT_ROOT=/var/www/html/public \
+    APP_ENV=prod \
+    APP_DEBUG=0 \
+    APP_SECRET=change-me
 
 # Configure Apache document root & enable rewrite
 RUN set -eux; \
