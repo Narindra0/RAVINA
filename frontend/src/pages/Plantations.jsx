@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { api } from '../lib/axios';
 import Sidebar from './Sidebar';
 import { LocalFlorist, WaterDrop, LocationOn, Menu as MenuIcon, AddCircleOutline, CalendarMonth } from '@mui/icons-material';
-import { IconButton, Box, Button, Typography } from '@mui/material';
+import { IconButton, Box, Button, Typography, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import '../styles/Plantations.styles.css';
 import PlantationDetailsModal from './PlantationDetailsModal';
 import CreateUserPlantationModal from './CreateUserPlantationModal';
@@ -218,45 +218,25 @@ export default function Plantations() {
                 gap: 1.5,
               }}
             >
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 1,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <Typography variant="body2" sx={{ fontWeight: 600, color: '#1f2937' }}>
-                  Triage :
-                </Typography>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  {filterOptions.map((option) => {
-                    const isActive = statusFilter === option.value;
-                    return (
-                      <Button
-                        key={option.value}
-                        variant={isActive ? 'contained' : 'outlined'}
-                        size="small"
-                        onClick={() => setStatusFilter(option.value)}
-                        sx={{
-                          textTransform: 'none',
-                          borderRadius: '999px',
-                          px: 2,
-                          borderColor: isActive ? '#10b981' : '#e5e7eb',
-                          backgroundColor: isActive ? '#10b981' : '#fff',
-                          color: isActive ? '#fff' : '#374151',
-                          fontWeight: isActive ? 700 : 500,
-                          ':hover': {
-                            backgroundColor: isActive ? '#059669' : '#f3f4f6',
-                          },
-                        }}
-                      >
+                <FormControl size="small" sx={{ minWidth: 160 }}>
+                  <InputLabel id="plantation-filter-label">Triage</InputLabel>
+                  <Select
+                    labelId="plantation-filter-label"
+                    label="Triage"
+                    value={statusFilter}
+                    onChange={(event) => setStatusFilter(event.target.value)}
+                    sx={{
+                      borderRadius: '999px',
+                      backgroundColor: '#fff',
+                    }}
+                  >
+                    {filterOptions.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
                         {option.label}
-                      </Button>
-                    );
-                  })}
-                </Box>
-              </Box>
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               <Button
                 variant="contained"
                 startIcon={<AddCircleOutline />}
